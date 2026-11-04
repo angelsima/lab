@@ -115,6 +115,14 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:.85rem;font-weight:
 .ln.only .sg .c{padding-right:1.6ch}
 .sec{font-family:var(--f-mono);font-size:.74em;letter-spacing:.12em;text-transform:uppercase;color:var(--brass);font-weight:700;margin-top:1.1em;margin-bottom:.2em}
 .gap{height:.8em}
+.sg .c.sounding{background:var(--brass);color:var(--brass-ink);border-radius:5px}
+.player{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);margin-bottom:6px}
+.player select{width:auto;max-width:100%;padding:5px 8px}
+.lyric{max-width:62ch}
+.lyric .ll{white-space:pre-wrap;min-height:1.35em}
+button.tag{background:none;cursor:pointer}
+button.tag:hover{background:var(--sunk)}
+.list.lyr li button{grid-template-columns:minmax(0,1fr) auto}
 .extras{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;padding-top:16px;border-top:1px solid var(--line)}
 .box{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;min-width:0}
 .box h3{font-family:var(--f-body);font-weight:700;font-size:.78rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
@@ -275,6 +283,7 @@ textarea.code{font-family:var(--f-mono);font-size:.88rem;min-height:300px;line-h
     <div class="brand"><h1>El Atril</h1><small>Guitarra · voz · trompeta</small></div>
     <nav class="tabs" role="tablist" id="tabs">
       <button role="tab" data-act="tab" data-tab="songs">Canciones</button>
+      <button role="tab" data-act="tab" data-tab="lyrics">Letras</button>
       <button role="tab" data-act="tab" data-tab="sets">Set listo</button>
       <button role="tab" data-act="tab" data-tab="practice">Ensayo</button>
       <button role="tab" data-act="tab" data-tab="studio">Estudio</button>
@@ -593,7 +602,7 @@ function songFlats(song,n){const k=trKey(keyOf(song),n);const f=flatKey(k);if(f!
 
 /* Render ChordPro sencillo: [Am]letra, # Sección, {c: comentario} */
 function renderChart(body,n,flats){
-  const out=[];
+  const out=[];let k=0;
   for(const raw of normBody(body).split(/\r?\n/)){
     const line=raw.replace(/\s+$/,"");
     if(!line.trim()){out.push('<div class="gap"></div>');continue}
@@ -603,14 +612,14 @@ function renderChart(body,n,flats){
     if(parts.length===1){out.push(`<div class="ln">${esc(line)}</div>`);continue}
     const segs=[];
     if(parts[0])segs.push(["",parts[0]]);
-    for(let i=1;i<parts.length;i+=2)segs.push([parts[i],parts[i+1]||""]);
+    for(let i=1;i<parts.length;i+=2)segs.push([parts[i],parts[i+1]||"",parts[i]?k++:-1]);
     const onlyChords=segs.every(s=>!s[1].trim());
     let html="";
-    for(const [c,t] of segs){
+    for(const [c,t,kk] of segs){
       const toks=t?(t.match(/\S*\s*/g)||[]).filter(Boolean):[""];
       toks.forEach((tk,j)=>{
         const ch=j===0&&c?pretty(trChord(c.trim(),n,flats)):"";
-        html+=`<span class="sg"><span class="c">${ch}</span><span class="l">${esc(onlyChords?"":tk)||(onlyChords?"":" ")}</span></span>`;
+        html+=`<span class="sg"><span class="c"${j===0&&c?` data-k="${kk}"`:""}>${ch}</span><span class="l">${esc(onlyChords?"":tk)||(onlyChords?"":" ")}</span></span>`;
       });
     }
     out.push(`<div class="ln has${onlyChords?" only":""}">${html}</div>`);
@@ -746,6 +755,7 @@ const Eng={
     const bpb=c.meter;const ci=c.countIn?bpb*spb:0;
     if(pos<ci){if(pos%spb===0){const b=pos/spb;this.click(t,b===0?"hi":"mid",.9,"master");this.q.push({t,count:b})}return}
     const p=pos-ci;const N=c.beatChords.length;if(!N)return;
+    if(c.maxBeats&&Math.floor(p/spb)>=c.maxBeats){this.stop(true);return}
     const gb=Math.floor(p/spb)%N,st=p%spb,beat=gb%bpb,bar=Math.floor(gb/bpb),absBar=Math.floor(p/spb/bpb);
     const ch=c.beatChords[gb],prev=c.beatChords[(gb-1+N)%N],nx=c.beatChords[(gb+1)%N];
     const P={t,sd,bd:sd*spb,st,spb,beat,bpb,bar,absBar,ch:chordInfo(ch),sym:ch,start:gb===0||ch!==prev,changes:nx!==ch,next:chordInfo(nx)};
@@ -824,7 +834,8 @@ const Eng={
 };
 
 /* ---------- almacenamiento ---------- */
-const COLS=["songs","sets","resources"];
+const COLS=["songs","sets","resources","lyrics"];
+const emptyData=()=>Object.fromEntries(COLS.map(c=>[c,{}]));
 /* ---- Firebase (proyecto "mis-cosas") ----
    Pega aquí el firebaseConfig de tu proyecto (el mismo que usa la percu).
    Mientras sea null, El Atril guarda solo en este navegador. */
@@ -873,7 +884,7 @@ const localData=()=>LS.get("data",{});
 const localCount=()=>COLS.reduce((n,c)=>n+Object.keys(localData()[c]||{}).length,0);
 
 const Store={
-  mode:"cargando",db:null,assets:null,downloads:null,data:{songs:{},sets:{},resources:{}},ready:false,sig:{},unsubs:[],
+  mode:"cargando",db:null,assets:null,downloads:null,data:emptyData(),ready:false,sig:{},unsubs:[],
   async init(){
     let db=null;
     try{if(window.claude&&typeof window.claude.use==="function")db=await window.claude.use("db")}catch(e){db=null}
@@ -894,9 +905,9 @@ const Store={
     }else if(fbOn())toast("No se pudo cargar Firebase. Sigues con lo guardado en este navegador.");
   },
   detach(){this.unsubs.forEach(f=>{try{f()}catch(e){}});this.unsubs=[];this.db=null},
-  useLocal(){this.detach();this.mode="local";this.data=Object.assign({songs:{},sets:{},resources:{}},localData());this.ready=true;lastSig={};onData()},
+  useLocal(){this.detach();this.mode="local";this.data=Object.assign(emptyData(),localData());this.ready=true;lastSig={};onData()},
   attach(db,mode){
-    this.detach();this.db=db;this.mode=mode;this.ready=false;this.sig={};lastSig={};this.data={songs:{},sets:{},resources:{}};
+    this.detach();this.db=db;this.mode=mode;this.ready=false;this.sig={};lastSig={};this.data=emptyData();
     if(S.tab!=="studio")render();
     let got=0;const one=c=>{if(!this.sig[c]){this.sig[c]=1;got++}if(got>=COLS.length&&!this.ready){this.ready=true;onData(c)}};
     COLS.forEach(c=>{this.unsubs.push(db.collection(c).onSnapshot(snap=>{const o={};snap.docs.forEach(d=>{o[d.id]=d.data()});this.data[c]=o;if(this.ready)onData(c);one(c)},err=>{toast("No se pudo leer el cancionero: "+(err&&err.code||"error"));one(c)}))});
@@ -935,7 +946,7 @@ const S={
   tab:LS.get("tab","songs"),songId:null,filter:"all",q:"",tr:{},font:LS.get("font",1),setId:"_known",
   metro:LS.get("metro",{bpm:90,meter:"4/4",sub:1,accent:true}),
   wheel:LS.get("wheel",{preset:"andaluza",prog:PRESETS[0].prog,key:9,bpm:104,style:"rumba",meter:4,countIn:true,mix:{chords:.8,bass:.8,drums:.7,click:0}}),
-  resTag:"all",stage:null,scroll:{on:false,speed:2,el:null,raf:0,last:0}
+  resTag:"all",lyricId:null,lq:"",ltag:"all",sp:{},stage:null,scroll:{on:false,speed:2,el:null,raf:0,last:0}
 };
 const persist=()=>{LS.set("tab",S.tab);LS.set("font",S.font);LS.set("metro",S.metro);LS.set("wheel",S.wheel)};
 
@@ -955,11 +966,13 @@ function onData(c){
 
 /* ---------- render principal ---------- */
 function render(){
+  spSync();
   $$("#tabs button").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.tab===S.tab)));
   if(S.tab!=="songs")stopScroll();
   const v=$("#view");
   if(!Store.ready){v.innerHTML='<p class="loading">Abriendo el cancionero…</p>';return}
   if(S.tab==="songs")v.innerHTML=viewSongs();
+  else if(S.tab==="lyrics")v.innerHTML=viewLyrics();
   else if(S.tab==="sets")v.innerHTML=viewSets();
   else if(S.tab==="practice"){v.innerHTML=viewPractice();initPractice()}
   else if(S.tab==="studio"){v.innerHTML=viewStudio();initStudio()}
@@ -971,6 +984,7 @@ function render(){
 /* CANCIONES */
 function viewSongs(){
   const all=songsSorted();
+  if(!all.length)return emptySongs();
   const q=S.q.toLowerCase();
   const list=all.filter(s=>(S.filter==="all"||s.status===S.filter)&&(!q||(s.title||"").toLowerCase().includes(q)||(s.artist||"").toLowerCase().includes(q)||(s.style||"").toLowerCase().includes(q)));
   const song=S.songId?Store.get("songs",S.songId):null;
@@ -987,7 +1001,7 @@ function viewSongs(){
 }
 function emptySongs(){return `<div class="empty"><h3>Tu cancionero está vacío</h3><p>Añade la primera canción. Puedes pegar la letra con los acordes encima, tal cual la copias de una web de acordes (vale Am G F o Lam Sol Fa), y El Atril la convierte para que los acordes vayan sobre cada sílaba y se puedan transportar.</p><button class="btn pri" data-act="newSong">+ Añadir canción</button></div>`}
 function sheetHTML(s){
-  const n=trOf(s);const saved=+s.myShift||0;const flats=songFlats(s,n);const key=trKey(keyOf(s),n);
+  const n=trOf(s);const saved=+s.myShift||0;const flats=songFlats(s,n);const key=trKey(keyOf(s),n);const o=spOpts(s),hc=hasChords(s),playing=SP.on&&SP.id===s.id;
   const links=(s.links||[]).filter(l=>SAFE_URL(l.url));
   return `<div class="sheet-head"><div style="min-width:0"><button class="btn sm ghost back" data-act="closeSong">← Canciones</button><h2>${esc(s.title||"Sin título")}</h2><div class="who">${esc(s.artist||"")}</div>
    <div class="meta"><span class="tag"><span class="dot ${esc(s.status)}"></span><b>${esc(STATUS[s.status]||"")}</b></span>${key?`<span class="tag">${n&&n===saved?"★ Mi tono":"Tono"} <b>${pretty(key)}</b>${n?` <span>(orig. ${pretty(keyOf(s))} · ${fmtSt(n)})</span>`:""}</span>`:(n?`<span class="tag">${n===saved?"★ Mi tono":"Transporte"} <b>${fmtSt(n)}</b></span>`:"")}${saved&&n!==saved?`<span class="tag">★ Mi tono <b>${keyOf(s)?pretty(trKey(keyOf(s),saved)):fmtSt(saved)}</b></span>`:""}${s.capo?`<span class="tag">Cejilla <b>${esc(s.capo)}</b></span>`:""}${s.bpm?`<span class="tag"><b>${esc(s.bpm)}</b> bpm</span>`:""}${s.timeSig?`<span class="tag">Compás <b>${esc(s.timeSig)}</b></span>`:""}${s.style?`<span class="tag">${esc(s.style)}</span>`:""}</div></div>
@@ -1002,6 +1016,7 @@ function sheetHTML(s){
    <button class="btn sm" data-act="rehearse" data-id="${s.id}">Ensayar</button>
    ${hasAudio(s)?`<button class="btn sm" data-act="toStudio" data-id="${s.id}">Abrir en el Estudio</button>`:""}
   </div>
+  ${hc?`<div class="player"><button class="btn sm pri${playing?" on":""}" data-act="spPlay" data-id="${s.id}">${playing?"■ Parar":"▶ Tocar acordes"}</button><span class="seg-ctl" title="Tempo"><button data-act="spBpm" data-d="-5" aria-label="Más lento">−5</button><span id="spBpm">${o.bpm}</span><button data-act="spBpm" data-d="5" aria-label="Más rápido">+5</button></span><span class="muted" style="font-size:.85rem">bpm</span><select id="spStyle" aria-label="Estilo del acompañamiento">${Object.entries(STYLES).filter(([k])=>k!=="click").map(([k,l])=>`<option value="${k}" ${o.style===k?"selected":""}>${l}</option>`).join("")}</select><label class="row" style="gap:6px;font-weight:700;font-size:.9rem"><input type="checkbox" id="spLoop" ${o.loop?"checked":""}> Bucle</label></div>`:""}
   <div class="chart" id="chart" style="--fs:${S.font}">${renderChart(s.body,n,flats)||'<p class="muted">Aún no hay letra. Pulsa Editar para añadirla.</p>'}</div>
   <div class="extras">
    <div class="box"><h3>Pista de acompañamiento</h3>${backingHTML(s.backing)}${s.backingNote?`<p class="help">Versión: ${esc(s.backingNote)}</p>`:""}${s.stems&&s.stems.length?`<p class="help">${s.stems.length} pistas separadas · <button class="btn sm ghost" data-act="toStudio" data-id="${s.id}">Mezclar en el Estudio</button></p>`:""}</div>
@@ -1052,6 +1067,7 @@ function renderStage(){
   st.ids=st.ids.filter(id=>Store.get("songs",id));if(!st.ids.length){closeStage();return}
   st.idx=Math.min(st.idx,st.ids.length-1);
   const s=Store.get("songs",st.ids[st.idx]);const prev=st.idx>0?Store.get("songs",st.ids[st.idx-1]):null;const next=st.idx<st.ids.length-1?Store.get("songs",st.ids[st.idx+1]):null;
+  if(SP.on&&SP.id!==s.id)Eng.stop();
   const n=trOf(s);const key=trKey(keyOf(s),n);const body=$("#stageBody");const keepTop=body&&body.dataset.id===s.id?body.scrollTop:0;
   el.innerHTML=`<header class="stage-top">
     <button class="btn sm" data-act="closeStage" aria-label="Salir del modo escenario">✕ Salir</button>
@@ -1062,6 +1078,7 @@ function renderStage(){
      <span class="seg-ctl"><button data-act="font" data-d="-1" aria-label="Letra más pequeña">A−</button><button data-act="font" data-d="1" aria-label="Letra más grande">A+</button></span>
      <button class="btn sm${S.scroll.on?" on":""}" data-act="scroll">${S.scroll.on?"❚❚":"▼ Auto"}</button>
      <span class="seg-ctl"><button data-act="speed" data-d="-1" aria-label="Más lento">−</button><span id="spd">${S.scroll.speed}</span><button data-act="speed" data-d="1" aria-label="Más rápido">+</button></span>
+     ${hasChords(s)?`<button class="btn sm${SP.on&&SP.id===s.id?" on":""}" data-act="spPlay" data-id="${s.id}" data-short="1" title="Tocar los acordes con sonido sintético">${SP.on&&SP.id===s.id?"■":"▶"}</button>`:""}
      <button class="btn sm${st.night?" on":""}" data-act="night" title="Fondo oscuro para tocar de noche">☾</button>
     </div>
   </header>
@@ -1083,13 +1100,15 @@ function stageNav(d){const st=S.stage;if(!st)return;const ni=st.idx+d;if(ni<0||n
 function viewPractice(){
   const w=S.wheel,m=S.metro;
   const keyOpts=FL.map((k,i)=>`<option value="${i}" ${+w.key===i?"selected":""}>${pretty(k)}</option>`).join("");
+  if(String(w.preset).startsWith("song:")&&!Store.get("songs",w.preset.slice(5)))w.preset="custom";
+  const mySongs=songsSorted().filter(hasChords);
   return `<section class="practice">
    <div class="card wheel">
     <div class="card-h"><h2>Rueda de acordes</h2><button class="btn pri play" id="wPlay" data-act="wheelPlay">▶ Tocar</button></div>
     <div class="now" aria-live="off"><div><div class="label">Ahora</div><div class="cur" id="wCur">—</div></div><div class="nxt"><span class="label">Luego</span><b id="wNext">—</b></div><div class="beats" id="wBeats"></div></div>
     <div class="bars" id="wBars"></div>
     <div class="grid2">
-     <label class="f">Progresión base<select id="wPreset">${PRESETS.map(p=>`<option value="${p.id}" ${w.preset===p.id?"selected":""}>${esc(p.name)}</option>`).join("")}<option value="custom" ${w.preset==="custom"?"selected":""}>Propia</option></select></label>
+     <label class="f">Progresión base<select id="wPreset"><optgroup label="Progresiones base">${PRESETS.map(p=>`<option value="${p.id}" ${w.preset===p.id?"selected":""}>${esc(p.name)}</option>`).join("")}</optgroup>${mySongs.length?`<optgroup label="Mis canciones">${mySongs.map(x=>`<option value="song:${x.id}" ${w.preset==="song:"+x.id?"selected":""}>${esc(x.title||"Sin título")}</option>`).join("")}</optgroup>`:""}<option value="custom" ${w.preset==="custom"?"selected":""}>Propia</option></select></label>
      <label class="f">Tonalidad<select id="wKey">${keyOpts}</select></label>
      <label class="f">Estilo<select id="wStyle">${Object.entries(STYLES).map(([k,l])=>`<option value="${k}" ${w.style===k?"selected":""}>${l}</option>`).join("")}</select></label>
      <label class="f">Compás<select id="wMeter"><option value="4" ${w.meter==4?"selected":""}>4/4</option><option value="3" ${w.meter==3?"selected":""}>3/4</option><option value="2" ${w.meter==2?"selected":""}>2/4</option></select></label>
@@ -1127,7 +1146,8 @@ function drawWheel(){
   $("#wBars").innerHTML=pr.bars.map((b,i)=>`<div class="bar" data-bar="${i}">${b.map(c=>`<span>${pretty(c)}</span>`).join("")}</div>`).join("")||'<p class="muted">Escribe al menos un compás.</p>';
   $("#wBeats").innerHTML=Array.from({length:+w.meter},()=>"<i></i>").join("");
   $("#wKey").disabled=!pr.roman;$("#wKey").title=pr.roman?"":"La tonalidad solo se aplica a progresiones escritas en grados";
-  const p=PRESETS.find(x=>x.id===w.preset);$("#wTip").innerHTML=p?p.tip:"Progresión propia. Escríbela en grados (I, ii7, V7, bVII…) para poder cambiarla de tonalidad.";
+  const p=PRESETS.find(x=>x.id===w.preset);const so=String(w.preset).startsWith("song:")?Store.get("songs",w.preset.slice(5)):null;
+  $("#wTip").innerHTML=p?p.tip:so?`<b>${esc(so.title)}</b>${keyOf(so)?" · tono <b>"+pretty(trKey(keyOf(so),trOf(so)))+"</b>":""}. Cada línea con acordes es un compás (si trae más de los que caben, se reparte en varios). Suena en el tono que ves en su hoja: si lo cambias allí, vuelve a elegirla aquí.`:"Progresión propia. Escríbela en grados (I, ii7, V7, bVII…) para poder cambiarla de tonalidad.";
   $("#wCur").textContent=pr.bars[0]?prettyTxt(pr.bars[0][0]):"—";$("#wNext").textContent=pr.bars[1]?prettyTxt(pr.bars[1][0]):"—";
 }
 const prettyTxt=s=>prettyAcc(String(s||""));
@@ -1137,7 +1157,9 @@ function initPractice(){
   drawWheel();drawDots();setPlayButtons();
   const w=S.wheel,m=S.metro;
   const rs=()=>{if(Eng.mode==="wheel")startWheel()};
-  $("#wPreset").onchange=e=>{const p=PRESETS.find(x=>x.id===e.target.value);w.preset=e.target.value;if(p){Object.assign(w,{prog:p.prog,key:p.key,bpm:p.bpm,style:p.style,meter:p.meter});$("#wProg").value=p.prog;$("#wKey").value=p.key;$("#wStyle").value=p.style;$("#wMeter").value=p.meter;$("#wBpm").value=p.bpm;$("#wBpmOut").textContent=p.bpm}persist();drawWheel();rs()};
+  $("#wPreset").onchange=e=>{
+    if(String(e.target.value).startsWith("song:")){const so=Store.get("songs",e.target.value.slice(5));if(so&&songToWheel(so)){$("#wProg").value=w.prog;$("#wStyle").value=w.style;$("#wMeter").value=w.meter;$("#wBpm").value=w.bpm;$("#wBpmOut").textContent=w.bpm;persist();drawWheel();rs();return}}
+    const p=PRESETS.find(x=>x.id===e.target.value);w.preset=e.target.value;if(p){Object.assign(w,{prog:p.prog,key:p.key,bpm:p.bpm,style:p.style,meter:p.meter});$("#wProg").value=p.prog;$("#wKey").value=p.key;$("#wStyle").value=p.style;$("#wMeter").value=p.meter;$("#wBpm").value=p.bpm;$("#wBpmOut").textContent=p.bpm}persist();drawWheel();rs()};
   $("#wKey").onchange=e=>{w.key=+e.target.value;persist();drawWheel();rs()};
   $("#wStyle").onchange=e=>{w.style=e.target.value;if(w.style==="vals"&&w.meter==4){w.meter=3;$("#wMeter").value=3}persist();drawWheel();rs()};
   $("#wMeter").onchange=e=>{w.meter=+e.target.value;persist();drawWheel();rs()};
@@ -1168,6 +1190,68 @@ function startWheel(){
 }
 function startMetro(){Eng.start("metro",metroCfg(),e=>{$$("#mDots i").forEach((d,i)=>d.classList.toggle("on",i===e.beat))},()=>{$$("#mDots i").forEach(d=>d.classList.remove("on"));setPlayButtons()});Eng.setMix({click:1});setPlayButtons()}
 
+/* ---------- canciones → compases (para sonar en la hoja y para la rueda de ensayo) ---------- */
+const hasChords=s=>/\[[^\]]+\]/.test(normBody(s.body));
+const meterOf=s=>({2:2,3:3,4:4,6:2,12:4})[parseInt(s.timeSig,10)]||4;
+function guessStyle(t){t=String(t||"").toLowerCase();if(/bossa/.test(t))return "bossa";if(/vals|waltz/.test(t))return "vals";if(/gypsy|manouche|django/.test(t))return "pompe";if(/swing|jazz/.test(t))return "swing";if(/rumba|flamenc|tango|bulería|buleria|sevillana|rumbita|tiento/.test(t))return "rumba";return "pop"}
+/* cada línea con acordes es un compás; si trae más acordes que tiempos, se parte en varios compases */
+function songBars(song,n,flats,meter){
+  meter=meter||4;const bars=[];let k=0;
+  for(const raw of normBody(song.body).split(/\r?\n/)){
+    const line=raw.replace(/\s+$/,"");
+    if(!line.trim()||/^\s*#\s*(.+)$/.test(line)||/^\s*\{(?:c|comment|soc|start_of_chorus)[^:]*:?\s*(.*)\}\s*$/i.test(line))continue;
+    const parts=line.split(/\[([^\]]*)\]/);const cs=[];
+    for(let i=1;i<parts.length;i+=2){const c=parts[i];if(!c)continue;const kk=k++;const t=c.trim();if(isChord(t))cs.push({sym:trChord(t,n,flats),k:kk})}
+    for(let i=0;i<cs.length;i+=meter)bars.push(cs.slice(i,i+meter));
+  }
+  return bars;
+}
+function expandBars(bars,meter){
+  const chords=[],ks=[];
+  bars.forEach(bar=>{const per=meter/bar.length;bar.forEach((c,i)=>{const from=Math.round(i*per),to=Math.round((i+1)*per);for(let b=from;b<to;b++){chords.push(c.sym);ks.push(c.k)}})});
+  return {chords,ks};
+}
+/* vuelca una canción en la rueda de ensayo */
+function songToWheel(s){
+  const n=trOf(s),meter=meterOf(s),bars=songBars(s,n,songFlats(s,n),meter);if(!bars.length)return false;
+  Object.assign(S.wheel,{preset:"song:"+s.id,prog:bars.map(b=>b.map(c=>c.sym).join(" ")).join(" | "),bpm:+s.bpm||S.wheel.bpm||100,style:guessStyle(s.style),meter});
+  return true;
+}
+
+/* ---------- tocar los acordes de una canción (sintético) ---------- */
+const SP={id:null,on:false,meter:4,beatK:[],lastK:null};
+function spOpts(s){const o=S.sp[s.id]||{};return {bpm:o.bpm||+s.bpm||100,style:o.style||guessStyle(s.style),loop:!!o.loop}}
+function spStart(id){
+  const s=Store.get("songs",id);if(!s)return;
+  const n=trOf(s),meter=meterOf(s),bars=songBars(s,n,songFlats(s,n),meter);
+  if(!bars.length){toast("Esta canción aún no tiene acordes que tocar");return}
+  const {chords,ks}=expandBars(bars,meter);const o=spOpts(s);
+  const cfg={bpm:o.bpm,style:o.style,meter,countIn:true,beatChords:chords,click:0,maxBeats:o.loop?0:chords.length,
+    spanAt(P){const bc=Eng.cfg.beatChords,N=bc.length,i0=(P.bar*P.bpb+P.beat)%N,c=bc[i0];let k=0;while(k<N&&bc[(i0+k)%N]===c)k++;return Math.max(1,k)}};
+  SP.id=id;SP.meter=meter;SP.beatK=ks;SP.lastK=null;
+  Eng.start("wheel",cfg,spVis,()=>{SP.on=false;spHighlight(null);spPaint()});
+  if(Eng.mode!=="wheel")return;
+  SP.on=true;Eng.setMix(S.wheel.mix);spPaint();
+}
+function spVis(e){if(e.count!=null)return;spHighlight(SP.beatK[e.bar*SP.meter+e.beat])}
+function spHighlight(k){
+  const root=S.stage?$("#stage"):$("#view");if(!root)return;
+  $$(".c.sounding",root).forEach(x=>x.classList.remove("sounding"));
+  if(k==null||k<0){SP.lastK=null;return}
+  const el=$(`.c[data-k="${k}"]`,root);if(!el)return;
+  el.classList.add("sounding");
+  if(SP.lastK!==k){SP.lastK=k;const r=el.getBoundingClientRect(),h=innerHeight;if(r.top<h*.18||r.bottom>h*.78)el.scrollIntoView({block:"center",behavior:"smooth"})}
+}
+function spPaint(){$$('[data-act="spPlay"]').forEach(b=>{const on=SP.on&&b.dataset.id===SP.id;b.classList.toggle("on",on);b.textContent=b.dataset.short?(on?"■":"▶"):(on?"■ Parar":"▶ Tocar acordes")})}
+/* si cambias de canción o de pestaña, se para */
+function spSync(){if(!SP.on)return;const cur=S.stage?S.stage.ids[S.stage.idx]:(S.tab==="songs"?S.songId:null);if(cur!==SP.id)Eng.stop()}
+/* al transportar mientras suena, cambia los acordes sin cortar */
+function spRetune(id){
+  if(!SP.on||SP.id!==id||Eng.mode!=="wheel"||!Eng.cfg)return;
+  const s=Store.get("songs",id);if(!s)return;const n=trOf(s);
+  Eng.cfg.beatChords=expandBars(songBars(s,n,songFlats(s,n),SP.meter),SP.meter).chords;
+}
+
 /* RECURSOS */
 function viewRes(){
   const all=Store.list("resources").sort((a,b)=>(a.title||"").localeCompare(b.title||"","es"));
@@ -1177,6 +1261,95 @@ function viewRes(){
   ${all.length?`<div class="res-grid">${list.map(r=>{const links=(r.links||[]).filter(l=>SAFE_URL(l.url));return `<article class="res"><div class="row" style="justify-content:space-between;gap:6px"><span class="tag">${esc(r.tag||"General")}</span><button class="btn sm ghost" data-act="editRes" data-id="${r.id}">Editar</button></div><h3>${esc(r.title)}</h3>${r.notes?noteHTML(r.notes):""}${r.prog?`<div class="prog">${esc(r.prog)}</div>`:""}${links.length?`<ul class="links">${links.map(l=>`<li><a href="${esc(l.url)}" target="_blank" rel="noopener">▶ ${esc(l.label||"Vídeo")} <small>${esc(hostOf(l.url))} ↗</small></a></li>`).join("")}</ul>`:""}<div class="res-foot">${r.prog?`<button class="btn sm pri" data-act="practiceRes" data-id="${r.id}">Practicar en la rueda</button>`:""}</div></article>`}).join("")}</div>`:`<div class="empty" style="margin-top:14px"><h3>Aún no hay recursos</h3><p>Guarda aquí lo que quieras refrescar antes de tocar: cómo va la base de bossa, la pompe del gypsy swing, una rueda de jazz, y los vídeos de YouTube que mejor lo explican. Si le pones una progresión, podrás practicarla directamente en la rueda.</p><button class="btn pri" data-act="newRes">+ Añadir recurso</button></div>`}`;
 }
 function noteHTML(t){const lines=String(t).split(/\n/);let h="",inUl=false;for(const l of lines){if(/^\s*[-•]\s+/.test(l)){if(!inUl){h+='<ul class="nl">';inUl=true}h+="<li>"+esc(l.replace(/^\s*[-•]\s+/,""))+"</li>"}else{if(inUl){h+="</ul>";inUl=false}if(l.trim())h+="<p style=\"margin:0\">"+esc(l)+"</p>"}}if(inUl)h+="</ul>";return `<div style="display:flex;flex-direction:column;gap:4px">${h}</div>`}
+
+/* LETRAS (sin acordes, con etiquetas «apta para») */
+const PALOS=["Tangos","Tientos","Soleá","Bulerías","Alegrías","Seguiriyas","Fandangos","Malagueñas","Verdiales","Jabegotes","Granaínas","Tarantos","Tarantas","Cartageneras","Cantiñas","Rumba","Tanguillos","Sevillanas","Peteneras","Guajiras","Farruca","Martinete","Zambra","Nanas","Villancicos"];
+const ESTILOS=["Copla","Bolero","Balada","Pop","Rock","Folk","Blues","Jazz","Bossa nova","Gypsy swing","Reggae","Cumbia","Vals","Canción de autor","Infantil","Tango argentino","Habanera"];
+const lyricTitle=l=>(l.title||"").trim()||String(l.text||"").split(/\n/).map(x=>x.trim()).find(x=>x&&!x.startsWith("#"))||"Sin título";
+const lyricsSorted=()=>Store.list("lyrics").sort((a,b)=>lyricTitle(a).localeCompare(lyricTitle(b),"es"));
+const lyricTags=()=>{const m=new Map();Store.list("lyrics").forEach(l=>(l.tags||[]).forEach(t=>m.set(t,(m.get(t)||0)+1)));return [...m.entries()].sort((a,b)=>a[0].localeCompare(b[0],"es"))};
+const tkey=t=>String(t).normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();
+function canonTag(t){t=String(t||"").replace(/\s+/g," ").trim();if(!t)return "";t=t[0].toUpperCase()+t.slice(1);const known=[...PALOS,...ESTILOS,...lyricTags().map(x=>x[0])];return known.find(k=>tkey(k)===tkey(t))||t}
+
+function viewLyrics(){
+  const all=lyricsSorted();const q=tkey(S.lq.trim());const tags=lyricTags();
+  if(S.ltag!=="all"&&S.ltag!=="_fav"&&!tags.some(([t])=>t===S.ltag))S.ltag="all";
+  const hit=l=>{
+    if(S.ltag==="_fav"&&!l.fav)return false;
+    if(S.ltag!=="all"&&S.ltag!=="_fav"&&!(l.tags||[]).includes(S.ltag))return false;
+    return !q||tkey(lyricTitle(l)+" "+(l.author||"")+" "+(l.text||"")+" "+(l.tags||[]).join(" ")).includes(q);
+  };
+  if(!all.length)return `<div class="empty"><h3>Aún no hay letras</h3><p>Aquí guardas letras sin acordes: coplas de tangos, bulerías o soleás, poemas para cantar, letras de cualquier estilo. Cada una puede llevar una o varias etiquetas de «apta para» (palos y estilos) para encontrarlas cuando quieras cantar algo en concreto.</p><button class="btn pri" data-act="newLyric">+ Añadir la primera letra</button></div>`;
+  const list=all.filter(hit);const cur=S.lyricId?Store.get("lyrics",S.lyricId):null;const nfav=all.filter(l=>l.fav).length;
+  const chip=(k,l,n)=>`<button class="chip" aria-pressed="${S.ltag===k}" data-act="lyricTag" data-t="${esc(k)}">${esc(l)} <span class="muted">${n}</span></button>`;
+  return `<section class="songs${cur?" has-song":""}">
+   <aside class="list-pane">
+    <div class="row"><input type="search" id="lq" placeholder="Buscar en letras, autores y etiquetas" value="${esc(S.lq)}" aria-label="Buscar letra"><button class="btn pri" data-act="newLyric">+ Letra</button></div>
+    <div class="chips">${chip("all","Todas",all.length)}${nfav?chip("_fav","★ Favoritas",nfav):""}${tags.map(([t,n])=>chip(t,t,n)).join("")}</div>
+    <ul class="list lyr">${list.map(l=>`<li><button data-act="openLyric" data-id="${l.id}" aria-current="${l.id===S.lyricId}"><span style="min-width:0"><div class="t">${esc(lyricTitle(l))}</div><div class="a">${esc((l.tags||[]).join(" · ")||"Sin etiquetas")}</div></span><span class="k" style="color:var(--brass)">${l.fav?"★":""}</span></button></li>`).join("")||'<li class="muted" style="padding:12px 4px">Nada coincide con la búsqueda.</li>'}</ul>
+   </aside>
+   <article class="sheet">${cur?lyricSheet(cur):`<div class="empty"><h3>Elige una letra</h3>Ábrela para leerla con letra grande, o filtra por palo o estilo con las etiquetas de arriba.</div>`}</article>
+  </section>`;
+}
+function lyricSheet(l){
+  const tags=l.tags||[];
+  const body=String(l.text||"").split(/\r?\n/).map(raw=>{const t=raw.replace(/\s+$/,"");if(!t.trim())return '<div class="gap"></div>';const m=t.match(/^\s*#\s*(.+)$/);if(m)return `<div class="sec">${esc(m[1])}</div>`;return `<div class="ll">${esc(t)}</div>`}).join("");
+  return `<div class="sheet-head"><div style="min-width:0"><button class="btn sm ghost back" data-act="closeLyric">← Letras</button><h2>${esc(lyricTitle(l))}</h2>${l.author?`<div class="who">${esc(l.author)}</div>`:""}
+   <div class="meta">${tags.map(t=>`<button class="tag" data-act="lyricTagGo" data-t="${esc(t)}" title="Ver las letras con esta etiqueta">${esc(t)}</button>`).join("")||'<span class="tag">Sin etiquetas</span>'}</div></div>
+   <div class="row"><button class="btn${l.fav?" on":""}" data-act="lyricFav" data-id="${l.id}" aria-pressed="${!!l.fav}">${l.fav?"★ Favorita":"☆ Favorita"}</button><button class="btn" data-act="editLyric" data-id="${l.id}">Editar</button></div></div>
+  <div class="toolbar">
+   <span class="seg-ctl" title="Tamaño de letra"><button data-act="font" data-d="-1" aria-label="Letra más pequeña">A−</button><button data-act="font" data-d="1" aria-label="Letra más grande">A+</button></span>
+   <button class="btn sm" data-act="lyricCopy" data-id="${l.id}">Copiar letra</button>
+   <button class="btn sm" data-act="lyricToSong" data-id="${l.id}" title="Crea una canción con esta letra para ponerle los acordes">Pasar a Canciones</button>
+  </div>
+  <div class="chart lyric" id="chart" style="--fs:${S.font}">${body}</div>
+  ${l.notes?`<div class="extras"><div class="box"><h3>Notas</h3><div class="note">${esc(l.notes)}</div></div></div>`:""}`;
+}
+const LF={tags:[]};
+function lyricForm(l){
+  const isNew=!l;l=l||{};LF.tags=(l.tags||[]).slice();
+  openModal(`<h2>${isNew?"Nueva letra":"Editar letra"}</h2>
+   <div class="grid2"><label class="f">Título (opcional)<input type="text" id="lTitle" value="${esc(l.title||"")}" placeholder="Si lo dejas vacío, se usa el primer verso"></label><label class="f">Autor o fuente (opcional)<input type="text" id="lAuthor" value="${esc(l.author||"")}" placeholder="Popular, Camarón, la oí en…"></label></div>
+   <div class="f"><span class="label">Apta para (palos y estilos)</span><div class="chips" id="lfSel"></div>
+    <div class="row" style="gap:6px"><input type="text" id="lfNew" placeholder="Otra etiqueta (varias, separadas por comas)" style="flex:1" autocomplete="off"><button class="btn sm" data-act="lfAdd">Añadir</button></div>
+    <div id="lfSug"></div></div>
+   <label class="f">Letra (sin acordes)<textarea id="lText" style="min-height:220px" placeholder="Escribe o pega la letra…">${esc(l.text||"")}</textarea></label>
+   <p class="help" style="margin:0">Una línea que empiece por <code>#</code> es un título de sección (# Copla 1).${isNew?" Para guardar varias letras de golpe, sepáralas con una línea de tres guiones (<code>---</code>): cada trozo se guarda como una letra con las mismas etiquetas.":""}</p>
+   <label class="f">Notas (opcional)<textarea id="lNotes" style="min-height:56px" placeholder="Compás, cómo se canta, de qué disco…">${esc(l.notes||"")}</textarea></label>
+   <div class="modal-foot">${isNew?"":`<button class="btn ghost danger spacer" data-act="delLyric" data-id="${l.id}">Borrar letra</button>`}<button class="btn" data-act="closeModal">Cancelar</button><button class="btn pri" data-act="saveLyric" data-id="${isNew?"":l.id}">Guardar</button></div>`);
+  lfPaint();
+}
+function lfPaint(){
+  const sel=$("#lfSel"),sug=$("#lfSug");if(!sel||!sug)return;
+  const open=$$("#lfSug details").map(d=>d.open);
+  sel.innerHTML=LF.tags.length?LF.tags.map(t=>`<button class="chip" aria-pressed="true" data-act="lfTag" data-t="${esc(t)}" title="Quitar">${esc(t)} ✕</button>`).join(""):'<span class="muted" style="font-size:.88rem">Ninguna todavía: toca las de abajo o escribe la tuya.</span>';
+  const chips=arr=>arr.filter(t=>!LF.tags.includes(t)).map(t=>`<button class="chip" aria-pressed="false" data-act="lfTag" data-t="${esc(t)}">${esc(t)}</button>`).join("");
+  const mine=chips(lyricTags().map(x=>x[0]));
+  sug.innerHTML=`${mine?`<div class="label" style="margin-top:8px">Las que ya usas</div><div class="chips" style="margin-top:4px">${mine}</div>`:""}
+   <details style="margin-top:8px"><summary class="label" style="cursor:pointer">Palos flamencos</summary><div class="chips" style="margin-top:6px">${chips(PALOS)}</div></details>
+   <details style="margin-top:6px"><summary class="label" style="cursor:pointer">Otros estilos</summary><div class="chips" style="margin-top:6px">${chips(ESTILOS)}</div></details>`;
+  $$("#lfSug details").forEach((d,i)=>{if(open[i])d.open=true});
+}
+function lfAddTyped(){
+  const i=$("#lfNew");if(!i)return;
+  String(i.value).split(",").map(canonTag).filter(Boolean).forEach(t=>{if(!LF.tags.some(x=>tkey(x)===tkey(t)))LF.tags.push(t)});
+  i.value="";lfPaint();
+}
+async function saveLyric(id){
+  lfAddTyped();
+  const text=$("#lText").value.replace(/\r/g,"").replace(/[ \t]+$/gm,"").trim();
+  if(!text){toast("Escribe la letra");$("#lText").focus();return}
+  const old=id?clone(Store.get("lyrics",id)):{};delete old.id;
+  const base={...old,author:$("#lAuthor").value.trim(),tags:LF.tags.slice(),notes:$("#lNotes").value.trim()};
+  const btn=$('[data-act="saveLyric"]');btn.disabled=true;btn.textContent="Guardando…";
+  try{
+    if(id){await Store.put("lyrics",id,{...base,title:$("#lTitle").value.trim(),text});closeModal();toast("Letra guardada");return}
+    const parts=text.split(/^[ \t]*-{3,}[ \t]*$/m).map(t=>t.trim()).filter(Boolean);
+    let last=null;
+    for(const [i,p] of parts.entries()){last=uid("l");await Store.put("lyrics",last,{...base,title:parts.length===1?$("#lTitle").value.trim():"",text:p,createdAt:Date.now()+i})}
+    S.lyricId=parts.length>1?null:last;closeModal();render();toast(parts.length>1?parts.length+" letras guardadas":"Letra guardada");
+  }catch(e){btn.disabled=false;btn.textContent="Guardar"}
+}
 
 /* ---------- ESTUDIO: tono, velocidad, separación y mezclador ---------- */
 const Pool={ws:[],busy:[],q:[],jobs:{},n:0,inline:null,chain:null,
@@ -1512,8 +1685,8 @@ function closeModal(){$("#modal").hidden=true;$("#modalCard").innerHTML=""}
 const linksToText=ls=>(ls||[]).map(l=>(l.label?l.label+" | ":"")+l.url).join("\n");
 const textToLinks=t=>String(t||"").split(/\n/).map(l=>l.trim()).filter(Boolean).map(l=>{const p=l.split("|");const url=p.pop().trim();return {label:p.join("|").trim(),url}}).filter(l=>SAFE_URL(l.url));
 
-function songForm(s){
-  const isNew=!s;s=s||{status:"aprendiendo",timeSig:"4/4"};const bk=s.backing||{};
+function songForm(s,prefill){
+  const isNew=!s;s=s||Object.assign({status:"aprendiendo",timeSig:"4/4"},prefill);const bk=s.backing||{};
   openModal(`<h2>${isNew?"Nueva canción":"Editar canción"}</h2>
    <div class="grid2">
     <label class="f">Título<input type="text" id="fTitle" value="${esc(s.title||"")}"></label>
@@ -1579,11 +1752,11 @@ async function saveRes(id){
   try{await Store.put("resources",id||uid("r"),obj);closeModal();render();toast("Recurso guardado")}catch(e){}
 }
 function backupModal(){
-  openModal(`<h2>Copia de seguridad</h2><p class="muted" style="margin:0">Descarga todo el cancionero (canciones, sets y recursos) en un archivo JSON. Te sirve como copia y para pasarlo a tu web cuando la tengas montada. Las pistas de audio no van dentro del archivo.</p>
+  openModal(`<h2>Copia de seguridad</h2><p class="muted" style="margin:0">Descarga todo el cancionero (canciones, letras, sets y recursos) en un archivo JSON. Te sirve como copia y para pasarlo a tu web cuando la tengas montada. Las pistas de audio no van dentro del archivo.</p>
    <div class="row"><button class="btn pri" data-act="export">Descargar copia</button><label class="btn" style="cursor:pointer">Importar copia<input type="file" id="impFile" accept="application/json,.json" hidden></label></div>
    ${Store.mode==="firebase"&&localCount()?`<div class="row"><button class="btn" data-act="uploadLocal">Subir a mi nube lo de este navegador (${localCount()})</button></div>`:""}
    <textarea id="expTxt" class="code" hidden readonly style="min-height:160px"></textarea>
-   <p class="help" style="margin:0">Ahora: ${Store.list("songs").length} canciones · ${Store.list("sets").length} sets · ${Store.list("resources").length} recursos · ${Store.mode==="nube"?"guardado en la nube de claude.ai":Store.mode==="firebase"?"guardado en tu nube (Firebase)":"guardado solo en este navegador"}.</p>
+   <p class="help" style="margin:0">Ahora: ${Store.list("songs").length} canciones · ${Store.list("lyrics").length} letras · ${Store.list("sets").length} sets · ${Store.list("resources").length} recursos · ${Store.mode==="nube"?"guardado en la nube de claude.ai":Store.mode==="firebase"?"guardado en tu nube (Firebase)":"guardado solo en este navegador"}.</p>
    <div class="modal-foot"><button class="btn" data-act="closeModal">Cerrar</button></div>`);
   $("#impFile").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const j=JSON.parse(await f.text());let n=0;for(const c of COLS)for(const [id,d] of Object.entries(j[c]||{})){if(d&&typeof d==="object"){await Store.put(c,id,clone(d));n++}}toast(n+" elementos importados");closeModal();render()}catch(err){toast("El archivo no es una copia válida de El Atril")}};
 }
@@ -1727,8 +1900,23 @@ const ACT={
   fbSignIn:()=>fbSignIn(),
   fbLogout(){FB.auth&&FB.auth.signOut().then(()=>toast("Has salido. Trabajas con lo guardado en este navegador."))},
   async uploadLocal(b){b.disabled=true;let n=0;const d=localData();for(const c of COLS)for(const [id,x] of Object.entries(d[c]||{})){if(x&&typeof x==="object"){try{await Store.put(c,id,clone(x));n++}catch(e){}}}toast(n+" elementos subidos a tu nube");closeModal();render()},
-  tr(b){const id=S.stage?S.stage.ids[S.stage.idx]:S.songId;if(!id)return;S.tr[id]=((trOf(Store.get("songs",id))+ +b.dataset.d+18)%12)-6;S.stage?renderStage():render()},
-  trSet(b){const id=S.stage?S.stage.ids[S.stage.idx]:S.songId;if(!id)return;S.tr[id]=+b.dataset.v;S.stage?renderStage():render()},
+  tr(b){const id=S.stage?S.stage.ids[S.stage.idx]:S.songId;if(!id)return;S.tr[id]=((trOf(Store.get("songs",id))+ +b.dataset.d+18)%12)-6;spRetune(id);S.stage?renderStage():render()},
+  trSet(b){const id=S.stage?S.stage.ids[S.stage.idx]:S.songId;if(!id)return;S.tr[id]=+b.dataset.v;spRetune(id);S.stage?renderStage():render()},
+  spPlay(b){const id=b.dataset.id;if(SP.on&&SP.id===id){Eng.stop();return}spStart(id)},
+  spBpm(b){const id=S.songId,so=Store.get("songs",id);if(!so)return;const bpm=Math.max(40,Math.min(240,spOpts(so).bpm+ +b.dataset.d));S.sp[id]={...(S.sp[id]||{}),bpm};const e=$("#spBpm");if(e)e.textContent=bpm;if(SP.on&&SP.id===id&&Eng.cfg)Eng.cfg.bpm=bpm},
+  openLyric(b){S.lyricId=b.dataset.id;render();if(innerWidth<=860)window.scrollTo(0,0)},
+  closeLyric(){S.lyricId=null;render()},
+  lyricTag(b){S.ltag=b.dataset.t;render()},
+  lyricTagGo(b){S.ltag=b.dataset.t;S.lyricId=null;render();window.scrollTo(0,0)},
+  newLyric(){lyricForm(null)},
+  editLyric(b){lyricForm(Store.get("lyrics",b.dataset.id))},
+  saveLyric(b){saveLyric(b.dataset.id)},
+  delLyric(b){if(b.dataset.armed){Store.del("lyrics",b.dataset.id);closeModal();S.lyricId=null;render();toast("Letra borrada")}else{b.dataset.armed=1;b.textContent="¿Seguro? Pulsa otra vez"}},
+  lfTag(b){const t=b.dataset.t,i=LF.tags.indexOf(t);if(i>=0)LF.tags.splice(i,1);else LF.tags.push(t);lfPaint()},
+  lfAdd(){lfAddTyped()},
+  async lyricFav(b){const l=clone(Store.get("lyrics",b.dataset.id));delete l.id;l.fav=!l.fav;await Store.put("lyrics",b.dataset.id,l).catch(()=>{})},
+  async lyricCopy(b){const l=Store.get("lyrics",b.dataset.id);const txt=(lyricTitle(l)+"\n\n"+l.text).trim();try{await navigator.clipboard.writeText(txt);toast("Letra copiada")}catch(e){const t=document.createElement("textarea");t.value=txt;document.body.appendChild(t);t.select();try{document.execCommand("copy");toast("Letra copiada")}catch(_){toast("No se pudo copiar")}t.remove()}},
+  lyricToSong(b){const l=Store.get("lyrics",b.dataset.id);S.tab="songs";S.songId=null;persist();render();window.scrollTo(0,0);songForm(null,{title:lyricTitle(l),artist:l.author||"",style:(l.tags||[]).join(", "),body:l.text,status:"pendiente"})},
   async myKey(){
     const id=S.stage?S.stage.ids[S.stage.idx]:S.songId;if(!id)return;
     const s=Store.get("songs",id);if(!s)return;const n=trOf(s);
@@ -1741,7 +1929,7 @@ const ACT={
   scroll(b){if(S.scroll.on){stopScroll()}else startScroll(S.stage?$("#stageBody"):null);b.classList.toggle("on",S.scroll.on);b.textContent=S.stage?(S.scroll.on?"❚❚":"▼ Auto"):(S.scroll.on?"❚❚ Pausar":"▼ Desplazar")},
   speed(b){S.scroll.speed=Math.max(1,Math.min(10,S.scroll.speed+ +b.dataset.d));const s=$("#spd");s&&(s.textContent=S.scroll.speed)},
   async known(b){const s=clone(Store.get("songs",b.dataset.id));delete s.id;s.status=s.status==="lista"?"aprendiendo":"lista";await Store.put("songs",b.dataset.id,s).catch(()=>{});toast(s.status==="lista"?"Añadida a «Todo lo que me sé»":"Vuelve a «Aprendiendo»")},
-  rehearse(b){const s=Store.get("songs",b.dataset.id);if(s.bpm)S.metro.bpm=+s.bpm;if(s.timeSig)S.metro.meter=s.timeSig;S.tab="practice";persist();render();window.scrollTo(0,0)},
+  rehearse(b){const s=Store.get("songs",b.dataset.id);if(s.bpm)S.metro.bpm=+s.bpm;if(s.timeSig)S.metro.meter=s.timeSig;if(hasChords(s))songToWheel(s);S.tab="practice";persist();render();window.scrollTo(0,0)},
   pickSet(b){S.setId=b.dataset.id;render()},
   async newSet(){const id=uid("set");await Store.put("sets",id,{name:"Set "+new Date().toLocaleDateString("es-ES",{day:"numeric",month:"short"}),songIds:[]}).catch(()=>{});S.setId=id;render()},
   async saveKnownAsSet(){const id=uid("set");await Store.put("sets",id,{name:"Mi set",songIds:knownSongs().map(s=>s.id)}).catch(()=>{});S.setId=id;render();toast("Set guardado; ya puedes ordenarlo")},
@@ -1789,10 +1977,21 @@ const ACT={
 };
 document.addEventListener("click",e=>{const a=e.target.closest("[data-act]");if(!a||a.disabled)return;const f=ACT[a.dataset.act];if(f){e.preventDefault&&a.tagName!=="LABEL"&&e.preventDefault();f(a,e)}});
 $("#modal").addEventListener("click",e=>{if(e.target.id==="modal")closeModal()});
-document.addEventListener("input",e=>{if(e.target.id==="q"){S.q=e.target.value;const pos=e.target.selectionStart;render();const q=$("#q");q.focus();q.setSelectionRange(pos,pos)}});
-document.addEventListener("change",async e=>{if(e.target.id==="setName"){const st=clone(Store.get("sets",S.setId));delete st.id;st.name=e.target.value.trim()||"Set sin nombre";await Store.put("sets",S.setId,st).catch(()=>{})}});
+document.addEventListener("input",e=>{
+  if(e.target.id==="q"){S.q=e.target.value;const pos=e.target.selectionStart;render();const q=$("#q");q.focus();q.setSelectionRange(pos,pos)}
+  else if(e.target.id==="lq"){S.lq=e.target.value;const pos=e.target.selectionStart;render();const q=$("#lq");q.focus();q.setSelectionRange(pos,pos)}
+});
+document.addEventListener("change",async e=>{
+  if(e.target.id==="spStyle"||e.target.id==="spLoop"){
+    const id=S.songId;if(!id)return;const o=S.sp[id]=S.sp[id]||{};
+    if(e.target.id==="spStyle"){o.style=e.target.value;if(SP.on&&SP.id===id)spStart(id)}
+    else{o.loop=e.target.checked;if(SP.on&&SP.id===id&&Eng.cfg)Eng.cfg.maxBeats=o.loop?0:Eng.cfg.beatChords.length}
+    return;
+  }
+  if(e.target.id==="setName"){const st=clone(Store.get("sets",S.setId));delete st.id;st.name=e.target.value.trim()||"Set sin nombre";await Store.put("sets",S.setId,st).catch(()=>{})}});
 document.addEventListener("keydown",e=>{
   if(e.key==="Enter"&&e.target.id==="ceCustom"){ACT.ceCustom();return}
+  if(e.key==="Enter"&&e.target.id==="lfNew"){e.preventDefault();lfAddTyped();return}
   if(e.key==="Enter"&&e.target.id==="lgPass"){fbSignIn();return}
   if(CE.on){
     if(e.key==="Escape"){ACT.ceCancel();return}
