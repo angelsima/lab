@@ -145,6 +145,22 @@ button.tag:hover{background:var(--sunk)}
 .mel-row .mcol.playing .mh.hol{fill:none;stroke:var(--brass)}
 .mel-row .mcur{stroke:var(--brass);stroke-width:2}
 .mel-row .mcurh{fill:var(--brass)}
+.mel-row .mly{font-family:var(--f-body);font-size:12px;fill:var(--ink)}
+.mel-row .madv{fill:var(--brass)}
+#printArea{display:none;--ink:#111;--muted:#555;--chord:#111;--brass:#111;--hl:transparent;--bg:#fff;--danger:#111;--sunk:#fff;color:#111;background:#fff}
+.pr-mel{margin-bottom:20px}
+.pr-mel h2{font-family:var(--f-display);font-size:19pt;margin:0 0 2px;color:#111}
+.pr-meta{margin:0 0 8px;font-size:10pt;color:#444}
+.pr-hint{font-size:8.5pt;color:#555;margin:4px 0}
+.pr-notes{font-size:10pt;white-space:pre-wrap;margin:4px 0}
+#printArea .mel-row{break-inside:avoid;page-break-inside:avoid}
+@media print{
+  body.printing>*:not(#printArea){display:none!important}
+  body.printing::before{display:none}
+  body.printing{background:#fff!important}
+  body.printing #printArea{display:block}
+  @page{margin:14mm}
+}
 .im-item{border:1px solid var(--line);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:6px;min-width:0}
 .me-rec{flex:none;background:var(--surface);border-top:1px solid var(--line);padding:10px max(12px,env(safe-area-inset-left,0px)) calc(10px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:9px;max-height:72vh;overflow:auto}
 .me-rec>*{width:100%;max-width:760px;margin-inline:auto}
@@ -359,6 +375,7 @@ textarea.code{font-family:var(--f-mono);font-size:.88rem;min-height:300px;line-h
 
 <div class="stage" id="stage" hidden></div>
 <div class="mel-ed" id="melEd" hidden></div>
+<div id="printArea"></div>
 <div class="ce" id="ce" hidden></div>
 <div class="modal" id="modal" hidden><div class="modal-card" id="modalCard" role="dialog" aria-modal="true"></div></div>
 <div class="toast" id="toast" hidden></div>
@@ -1537,7 +1554,7 @@ function melSVG(ev,o){
   const refDi=clef==="g"?30:18;
   const LT=flats?[0,1,1,2,2,3,4,4,5,5,6,6]:[0,0,1,1,2,3,3,4,4,5,5,6],AC=flats?[0,-1,0,-1,0,0,-1,0,-1,0,-1,0]:[0,1,0,1,0,0,1,0,1,0,1,0];
   const spell=p=>{const pc=((p%12)+12)%12;return {di:(Math.floor(p/12)-1)*7+LT[pc],acc:AC[pc]}};
-  const band=I.band,bandH=band==="valves"?24:band==="holes"?80:band==="tab"?66:0;
+  const lyr=o.inst==="notas"&&o.lyr?lyrAssign(ev,o.lyr):null,band=lyr?"lyr":I.band,bandH={valves:24,holes:80,tab:66,recorder:96,flute:98,harp:22,lyr:22}[band]||0;
   const tab=band==="tab"?guitarTab(wr.map(p=>p==null?null:p+I.tr)):null;
   /* alto según las notas reales: lo justo para líneas adicionales, plicas y corchetes */
   const ks=wr.filter(p=>p!=null).map(p=>spell(p).di-refDi),kmax=ks.length?Math.max(...ks):4,kmin=ks.length?Math.min(...ks):4;
@@ -1545,8 +1562,9 @@ function melSVG(ev,o){
   const bl=o.barLen||4,items=[];let pos=0,next=bl;
   ev.forEach((e,i)=>{items.push({t:"n",i});pos+=e.d;if(bl&&pos>=next-1e-6){while(pos>=next-1e-6)next+=bl;if(i<ev.length-1)items.push({t:"b"})}});
   const CW=30,BW=10,KW=34,rows=[];let row,x;
+  const cw=i=>lyr&&lyr[i]?Math.max(CW,Math.ceil(lyr[i].length*6.6)+14):CW;
   const newRow=()=>{row={items:[],w:KW};rows.push(row);x=KW};newRow();
-  for(const it of items){const w=it.t==="n"?CW:BW;if(x+w>W&&row.items.length){if(it.t==="b")continue;newRow()}it.x=x;row.items.push(it);x+=w;row.w=x}
+  for(const it of items){const w=it.t==="n"?cw(it.i):BW;if(x+w>W&&row.items.length){if(it.t==="b")continue;newRow()}it.x=x;row.items.push(it);x+=w;row.w=x}
   if(o.edit){if(x+16>W&&row.items.length)newRow();row.endX=x;row.w=Math.max(row.w,x+16)}
   const acc={};let html="";
   rows.forEach((r,ri)=>{
@@ -1557,7 +1575,7 @@ function melSVG(ev,o){
     for(const it of r.items){
       if(it.t==="b"){for(const k in acc)delete acc[k];g+=`<line class="mis" style="stroke-width:1.2" x1="${it.x+5}" x2="${it.x+5}" y1="${TOP}" y2="${BOT}"/>`;continue}
       const i=it.i,e=ev[i],cx=it.x+18,p=wr[i],sh=durShape(e.d);let cls="mcol"+(o.sel===i?" sel":"");
-      let c=`<rect class="mbg" x="${it.x+2}" y="4" width="${CW-2}" height="${H-8}" rx="6"/>`;
+      let c=`<rect class="mbg" x="${it.x+2}" y="4" width="${cw(i)-2}" height="${H-8}" rx="6"/>`;
       let topY=TOP-6;
       if(p==null){c+=restGlyph(cx,yk(4),sh,s);if(sh.dot)c+=`<circle class="mi" cx="${cx+8}" cy="${yk(4)-hs}" r="1.6"/>`}
       else{
@@ -1570,7 +1588,7 @@ function melSVG(ev,o){
         if(sh.base<4){const up=k<4,sx=up?cx+4.7:cx-4.7,sy=up?y-25:y+25;c+=`<line class="mis" style="stroke-width:1.3" x1="${sx}" x2="${sx}" y1="${y}" y2="${sy}"/>`;const nf=sh.base<=.25?2:sh.base<=.5?1:0;for(let f=0;f<nf;f++)c+=flagGlyph(sx,sy+(up?f*5:-f*5),up);topY=Math.min(topY,(up?sy:y)-8)}
         else topY=Math.min(topY,y-10);
         if(sh.dot)c+=`<circle class="mi" cx="${cx+9}" cy="${k%2===0?y-hs:y}" r="1.6"/>`;
-        c+=bandSVG(band,p,cx,STAFF_H,tab&&tab[i]);
+        c+=band==="lyr"?(lyr[i]==null?"":lyr[i]===""?`<line class="mis" style="stroke-width:1" x1="${cx-6}" x2="${cx+14}" y1="${STAFF_H+16}" y2="${STAFF_H+16}"/>`:`<text class="mly" x="${cx-5}" y="${STAFF_H+15}">${esc(lyr[i])}</text>`):bandSVG(band,p,cx,STAFF_H,tab&&tab[i])+bandSVG2(band,p,cx,STAFF_H);
         c+=`<text class="mt" x="${cx}" y="${H-5}">${esc(prettyAcc(noteName(p,flats,o.style)))}</text>`;
       }
       if(sh.trip||sh.odd)c+=`<text class="mt" style="font-style:italic" x="${cx}" y="${Math.max(10,topY)}">${sh.trip?"3":esc(fmtDur(e.d))}</text>`;
@@ -1593,7 +1611,8 @@ const Mel={on:false,g:null,timer:0,sched:[],end:0,opts:null,
     if(timbre==="pluck"){const o=c.createOscillator(),lp=c.createBiquadFilter();o.type="sawtooth";o.frequency.value=f;lp.type="lowpass";lp.frequency.setValueAtTime(3200,t);lp.frequency.exponentialRampToValueAtTime(500,t+Math.min(dur,.8));g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.22*vel,t+.005);g.gain.exponentialRampToValueAtTime(.0001,t+Math.max(dur,.25)+.35);o.connect(lp).connect(g);o.start(t);o.stop(t+Math.max(dur,.25)+.4);return}
     const o=c.createOscillator(),lp=c.createBiquadFilter();lp.type="lowpass";o.frequency.value=f;
     if(timbre==="brass"){o.type="sawtooth";lp.frequency.setValueAtTime(f*1.5,t);lp.frequency.linearRampToValueAtTime(f*5,t+.06);lp.frequency.linearRampToValueAtTime(f*3.5,t+.25)}
-    else if(timbre==="whistle"){o.type="sine";lp.frequency.value=8000}
+    else if(timbre==="whistle"||timbre==="flute"){o.type="sine";lp.frequency.value=8000}
+    else if(timbre==="reed"){o.type="square";lp.frequency.value=Math.min(4000,f*4)}
     else{o.type="triangle";lp.frequency.value=2600}
     const lfo=c.createOscillator(),lg=c.createGain();lfo.frequency.value=5.2;lg.gain.setValueAtTime(0,t);lg.gain.linearRampToValueAtTime(f*.006,t+Math.min(.5,dur*.7)+.01);lfo.connect(lg).connect(o.frequency);
     const a=timbre==="brass"?.035:.02,rel=.06,peak=(timbre==="whistle"?.3:.2)*vel,hold=Math.max(a+.02,dur*.92-rel);
@@ -1651,7 +1670,7 @@ function viewMelodies(){
   return `<section class="songs${cur?" has-song":""}">
    <aside class="list-pane">
     <div class="row"><input type="search" id="mq" placeholder="Buscar melodía, etiqueta o apunte" value="${esc(S.mq)}" aria-label="Buscar melodía"><button class="btn pri" data-act="newMel">+ Melodía</button></div>
-    <div class="row" style="gap:6px"><button class="btn sm" data-act="newMelRec"><span class="rec-dot">●</span> Grabar</button><button class="btn sm" data-act="importMel">Importar</button></div>
+    <div class="row" style="gap:6px"><button class="btn sm" data-act="newMelRec"><span class="rec-dot">●</span> Grabar</button><button class="btn sm" data-act="importMel">Importar</button><button class="btn sm" data-act="melPrintList">Imprimir / PDF</button></div>
     <div class="chips">${chip("all","Todas",all.length)}${[...insts.entries()].filter(([i])=>INST[i]).map(([i,n])=>chip("i:"+i,INST[i].short,n)).join("")}${[...tags.entries()].sort((a,b)=>a[0].localeCompare(b[0],"es")).map(([t,n])=>chip("t:"+t,t,n)).join("")}</div>
     <ul class="list">${list.map(m=>`<li><button data-act="openMel" data-id="${m.id}" aria-current="${m.id===S.melId}"><span class="dot ${esc(m.status||"aprendiendo")}" title="${esc(STATUS[m.status]||"")}"></span><span style="min-width:0"><div class="t">${esc(m.title||"Sin título")}</div><div class="a">${esc([(INST[m.inst]||{}).short,...(m.tags||[])].filter(Boolean).join(" · "))}</div></span><span class="k">${m.bpm?esc(m.bpm):""}</span></button></li>`).join("")||'<li class="muted" style="padding:12px 4px">Nada coincide con la búsqueda.</li>'}</ul>
    </aside>
@@ -1664,7 +1683,7 @@ function melSheet(m){
   const links=(m.links||[]).filter(l=>SAFE_URL(l.url));
   return `<div class="sheet-head"><div style="min-width:0"><button class="btn sm ghost back" data-act="closeMel">← Melodías</button><h2>${esc(m.title||"Sin título")}</h2>
     <div class="meta"><span class="tag"><span class="dot ${esc(m.status||"aprendiendo")}"></span><b>${esc(STATUS[m.status]||STATUS.aprendiendo)}</b></span><span class="tag">★ <b>${esc((INST[m.inst]||INST.notas).short)}</b></span>${m.bpm?`<span class="tag"><b>${esc(m.bpm)}</b> bpm</span>`:""}${m.timeSig?`<span class="tag">Compás <b>${esc(m.timeSig)}</b></span>`:""}<span class="tag"><b>${ev.filter(e=>e.p!=null).length}</b> notas</span>${(m.tags||[]).map(t=>`<button class="tag" data-act="melFilter" data-t="t:${esc(t)}">${esc(t)}</button>`).join("")}</div></div>
-    <div class="row"><button class="btn" data-act="editMel" data-id="${m.id}">Editar</button></div></div>
+    <div class="row"><button class="btn" data-act="melPrintOne" data-id="${m.id}" title="Imprimir o guardar en PDF con la digitación que estás viendo">Imprimir / PDF</button><button class="btn" data-act="editMel" data-id="${m.id}">Editar</button></div></div>
   <div class="toolbar">
    <span class="label" style="margin-right:2px">Ver en</span>
    <span class="chips">${INST_ORDER.map(id=>`<button class="chip" aria-pressed="${view===id}" data-act="melView" data-v="${id}">${id===m.inst?"★ ":""}${INST[id].short}</button>`).join("")}</span>
@@ -1677,7 +1696,7 @@ function melSheet(m){
    <span class="seg-ctl" title="Octava en la que se muestra"><button data-act="melOct" data-d="-1" aria-label="Una octava más grave">8ª↓</button><span>${k?fmtSt(k)+" 8ª":"8ª"}${kMan==null&&I.range?" auto":""}</span><button data-act="melOct" data-d="1" aria-label="Una octava más aguda">8ª↑</button></span>${kMan!=null?`<button class="btn sm ghost" data-act="melOctAuto">Auto</button>`:""}
    <button class="btn sm ghost" data-act="melNames" title="Cambiar el nombre de las notas">${S.nn==="us"?"C D E":"Do Re Mi"}</button>
   </div>
-  <p class="help" style="margin:4px 0 0">${esc(I.hint)}${outN?` <b style="color:var(--danger)">${outN} ${outN===1?"nota queda":"notas quedan"} fuera del registro (en rojo)</b>: prueba otra octava.`:""} Toca una nota para oírla.</p>
+  <p class="help" style="margin:4px 0 0">${esc(I.hint)}${outN?` <b style="color:var(--danger)">${outN} ${outN===1?"nota queda":"notas quedan"} fuera del registro (en rojo)</b>: prueba otra octava.`:""} ${m.lyrics&&view!=="notas"?"La letra se ve en «Notas / voz». ":""}Toca una nota para oírla.</p>
   <div class="mel-staff" id="melStaff"></div>
   <div class="extras">
    ${m.notes?`<div class="box"><h3>Apuntes</h3><div class="note">${esc(m.notes)}</div></div>`:""}
@@ -1689,7 +1708,7 @@ const melZoom=box=>box.clientWidth>=900?1.45:box.clientWidth>=640?1.25:1;
 function melPaint(){
   const box=$("#melStaff");if(!box||!S.melId)return;const m=Store.get("melodies",S.melId);if(!m)return;
   const ev=parseMel(m.seq).ev,view=melViewOf(m);
-  box.innerHTML=ev.length?melSVG(ev,{inst:view,k:melK(m,view,ev),width:box.clientWidth,zoom:melZoom(box),style:S.nn,barLen:barLenOf(m.timeSig)}):'<p class="muted">Sin notas.</p>';
+  box.innerHTML=ev.length?melSVG(ev,{inst:view,k:melK(m,view,ev),width:box.clientWidth,zoom:melZoom(box),style:S.nn,barLen:barLenOf(m.timeSig),lyr:m.lyrics}):'<p class="muted">Sin notas.</p>';
   if(Mel.on&&MP.id===m.id&&MP.cur>=0)melHL("#melStaff",MP.cur);
 }
 function melBtns(){$$('[data-act="melPlay"]').forEach(b=>{const on=Mel.on&&MP.id===b.dataset.id;b.classList.toggle("on",on);b.textContent=on?"■ Parar":"▶ Escuchar"});const p=$("#mePlayBtn");if(p){const on=Mel.on&&MP.id==="editor";p.classList.toggle("on",on);p.textContent=on?"■ Parar":"▶ Escuchar"}}
@@ -1724,6 +1743,9 @@ function melEdit(m,prefill){
    <details class="me-more"><summary class="label">Escribir o pegar como texto</summary>
     <p class="help">Notas separadas por espacios, como en el instrumento principal: <code>Sol La Si Do5:2 - Re:1/2 Mi:1/2</code>. Vale <code>Do Re Mi</code> o <code>C D E</code>; el número es la octava (Do4 = do central) y, si no lo pones, va a la más cercana a la nota anterior. <code>:2</code> dura dos tiempos, <code>:1/2</code> medio; <code>-</code> es un silencio. Las barras <code>|</code> se ignoran.</p>
     <textarea id="meText" class="code" spellcheck="false" style="min-height:90px" aria-label="Notas como texto"></textarea><p class="warn" id="meTxtErr" style="margin:0"></p></details>
+   <details class="me-more" ${m.lyrics?"open":""}><summary class="label">Letra (para cantar)</summary>
+    <p class="help">Separa las sílabas con guiones y las palabras con espacios: <code>A-ve-ces me i-ma-gi-no</code>. Cada sílaba va a una nota, en orden (los silencios se saltan); <code>_</code> alarga la sílaba anterior a la nota siguiente. Se ve bajo las notas con el instrumento «Notas / voz».</p>
+    <textarea id="meLyr" style="min-height:70px" aria-label="Letra">${esc(m.lyrics||"")}</textarea></details>
    <details class="me-more"><summary class="label">Estado, etiquetas, enlaces y apuntes</summary>
     <div class="grid2"><label class="f">Estado<select id="meStatus">${Object.entries(STATUS).map(([k,l])=>`<option value="${k}" ${(m.status||"aprendiendo")===k?"selected":""}>${l}</option>`).join("")}</select></label>
     <label class="f">Etiquetas (separadas por comas)<input type="text" id="meTags" list="meTagList" value="${esc((m.tags||[]).join(", "))}" placeholder="jazz, calentamiento, bulerías…"></label></div>
@@ -1744,12 +1766,13 @@ function melEdit(m,prefill){
   $("#meInst").onchange=e=>{ME.inst=e.target.value;LS.set("melInst",ME.inst);ME.dirty=true;mePaint()};
   $("#meSig").onchange=()=>{ME.dirty=true;mePaint()};
   $("#meText").oninput=()=>{clearTimeout(ME.tt);ME.tt=setTimeout(meFromText,450)};
-  ["meTitle","meBpm","meTags","meLinks","meNotes","meStatus"].forEach(i=>{const x=$("#"+i);if(x)x.addEventListener("input",()=>{ME.dirty=true;ME.confirm=false})});
+  $("#meLyr").addEventListener("input",()=>{clearTimeout(ME.lt);ME.lt=setTimeout(()=>mePaint(false),300)});
+  ["meTitle","meBpm","meTags","meLinks","meNotes","meStatus","meLyr"].forEach(i=>{const x=$("#"+i);if(x)x.addEventListener("input",()=>{ME.dirty=true;ME.confirm=false})});
   mePaint();
 }
 function mePiano(){
   const I=INST[ME.inst],WK=[0,2,4,5,7,9,11,12],BK=[[1,0],[3,1],[6,3],[8,4],[10,5]];
-  const key=(pc,cls)=>{const w=(ME.oct+1)*12+pc,out=I.range&&(w<I.range[0]||w>I.range[1]),fg=ME.inst==="trompeta"&&TPT[w]!=null?TPT[w]:"";
+  const key=(pc,cls)=>{const w=(ME.oct+1)*12+pc,out=I.range&&(w<I.range[0]||w>I.range[1]),fg=ME.inst==="trompeta"?(TPT[w]??""):ME.inst==="armonica"?(HARP[w]||"").replace("-","−"):"";
     return {w,out,html:`${fg?`<small>${fg}</small>`:""}<span>${esc(prettyAcc(noteName(pc,false,S.nn)))}</span>`}};
   let h=WK.map(pc=>{const k=key(pc);return `<button class="wk${k.out?" k-out":""}" data-act="meKey" data-pc="${pc}" aria-label="${esc(noteName(k.w,false,S.nn,true))}">${k.html}</button>`}).join("");
   h+=BK.map(([pc,a])=>{const k=key(pc);return `<button class="bk${k.out?" k-out":""}" style="left:calc(${(a+1)*100/8}% - 3.9%)" data-act="meKey" data-pc="${pc}" aria-label="${esc(noteName(k.w,false,S.nn,true))}">${k.html}</button>`}).join("");
@@ -1759,7 +1782,7 @@ function mePiano(){
 }
 function mePaint(textToo){
   const box=$("#meStaff");if(!box)return;const I=INST[ME.inst],bl=barLenOf($("#meSig").value);
-  box.innerHTML=melSVG(ME.ev,{inst:ME.inst,k:0,width:box.clientWidth,zoom:melZoom(box),style:S.nn,barLen:bl,edit:true,cur:ME.cur,sel:ME.sel})+(ME.ev.length?"":`<p class="muted" style="margin:4px 0 0">Toca el teclado de abajo para ir añadiendo notas. Elige antes la duración (negra, corchea…). Toca una nota del pentagrama para seleccionarla y cambiarla.</p>`);
+  box.innerHTML=melSVG(ME.ev,{inst:ME.inst,k:0,width:box.clientWidth,zoom:melZoom(box),lyr:($("#meLyr")||{}).value||"",style:S.nn,barLen:bl,edit:true,cur:ME.cur,sel:ME.sel})+(ME.ev.length?"":`<p class="muted" style="margin:4px 0 0">Toca el teclado de abajo para ir añadiendo notas. Elige antes la duración (negra, corchea…). Toca una nota del pentagrama para seleccionarla y cambiarla.</p>`);
   $$("#melEd [data-act=meDur]").forEach(b=>b.setAttribute("aria-pressed",String(+b.dataset.v===ME.dur)));
   $("#meDotB").setAttribute("aria-pressed",String(ME.dot));$("#meTripB").setAttribute("aria-pressed",String(ME.trip));
   $("#meHint").textContent=I.hint;
@@ -1788,10 +1811,80 @@ async function meSave(){
   if(!ME.ev.some(e=>e.p!=null)){toast("Añade al menos una nota");return}
   const old=ME.id?clone(Store.get("melodies",ME.id)):{createdAt:Date.now()};delete old.id;
   const tags=[];$("#meTags").value.split(",").map(t=>t.replace(/\s+/g," ").trim()).filter(Boolean).forEach(t=>{t=t[0].toUpperCase()+t.slice(1);if(!tags.some(x=>tkey(x)===tkey(t)))tags.push(t)});
-  const obj={...old,title:$("#meTitle").value.trim()||"Melodía sin título",inst:ME.inst,bpm:Math.max(30,Math.min(300,+$("#meBpm").value||90)),timeSig:$("#meSig").value,status:$("#meStatus").value,tags,seq:melSeq(ME.ev),notes:$("#meNotes").value.trim(),links:textToLinks($("#meLinks").value)};
+  const obj={...old,title:$("#meTitle").value.trim()||"Melodía sin título",inst:ME.inst,bpm:Math.max(30,Math.min(300,+$("#meBpm").value||90)),timeSig:$("#meSig").value,status:$("#meStatus").value,tags,seq:melSeq(ME.ev),lyrics:$("#meLyr").value.trim(),notes:$("#meNotes").value.trim(),links:textToLinks($("#meLinks").value)};
   const id=ME.id||uid("m");
   try{await Store.put("melodies",id,obj)}catch(e){return}
   meClose();S.melId=id;S.tab="melodies";persist();render();toast(ME.id?"Melodía guardada":"Melodía añadida");
+}
+
+/* ---- más instrumentos (tablas: flauta dulce = Dolmetsch, digitación barroca; travesera = The Woodwind Fingering Guide) ---- */
+Object.assign(INST,{
+  dulce:{name:"Flauta dulce soprano",short:"Fl. dulce",tr:12,home:67,range:[60,86],band:"recorder",timbre:"whistle",
+    hint:"Flauta dulce soprano, digitación barroca (la más habitual en el colegio). Escrita una octava más grave de lo que suena. Arriba, el pulgar de atrás (◐ = entreabierto); luego mano izquierda y mano derecha. Los agujeros 6 y 7 son dobles: si solo está tapado el pequeño, es medio tono."},
+  travesera:{name:"Flauta travesera",short:"Travesera",tr:0,home:72,range:[60,96],band:"flute",timbre:"flute",
+    hint:"Digitación básica de flauta travesera (sistema Boehm). De arriba abajo: pulgar, mano izquierda (la llavecita de la derecha es la de sol♯), mano derecha y llave del meñique (● = mi♭; si pone Do o Do♯, la llave de ese pie). Los puntos pequeños junto a la mano derecha son llaves de trino."},
+  armonica:{name:"Armónica diatónica en Do",short:"Armónica",tr:0,home:67,range:[60,96],band:"harp",timbre:"reed",
+    hint:"Armónica diatónica de 10 agujeros en Do (afinación Richter). El número es el agujero: soplar si va solo, aspirar si lleva «−». Cada ' es un bending de medio tono. En color, overblow/overdraw (ob/od): técnica avanzada."}
+});
+INST_ORDER.splice(0,INST_ORDER.length,"trompeta","whistle","dulce","travesera","armonica","guitarra","notas");
+const RECF={60:"11111111",61:"1111111h",62:"11111110",63:"111111h0",64:"11111100",65:"11111011",66:"11110110",67:"11110000",68:"111011h0",69:"11100000",70:"11011000",71:"11000000",72:"10100000",73:"01100000",74:"00100000",75:"00111110",76:"p1111100",77:"p1111010",78:"p1110100",79:"p1110000",80:"p1101000",81:"p1100000",82:"p1100110",83:"p1101100",84:"p1001100",85:"p1011010b",86:"p1011010"};
+/* pulgar, mano izq., llave sol♯, mano der., llave de trino, meñique */
+const FLT={60:"T,111,0,111,,C",61:"T,111,0,111,,C#",62:"T,111,0,111,,",63:"T,111,0,111,,Eb",64:"T,111,0,110,,Eb",65:"T,111,0,100,,Eb",66:"T,111,0,001,,Eb",67:"T,111,0,000,,Eb",68:"T,111,1,000,,Eb",69:"T,110,0,000,,Eb",70:"T,100,0,100,,Eb",71:"T,100,0,000,,Eb",72:",100,0,000,,Eb",73:",000,0,000,,Eb",
+  74:"T,011,0,111,,",75:"T,011,0,111,,Eb",86:"T,011,0,000,,Eb",87:"T,111,1,111,,Eb",88:"T,110,0,110,,Eb",89:"T,101,0,100,,Eb",90:"T,101,0,001,,Eb",91:",111,0,000,,Eb",92:",011,1,000,,Eb",93:"T,010,0,100,,Eb",94:"T,000,0,100,1,",95:"T,101,0,000,2,",96:",111,1,100,,"};
+for(let m=76;m<=85;m++)FLT[m]=FLT[m-12];
+const HARP={60:"1",61:"-1'",62:"-1",63:"1ob",64:"2",65:"-2''",66:"-2'",67:"-2",68:"-3'''",69:"-3''",70:"-3'",71:"-3",72:"4",73:"-4'",74:"-4",75:"4ob",76:"5",77:"-5",78:"5ob",79:"6",80:"-6'",81:"-6",82:"6ob",83:"-7",84:"7",85:"7od",86:"-8",87:"8'",88:"8",89:"-9",90:"9'",91:"9",92:"9od",93:"-10",94:"10''",95:"10'",96:"10"};
+function bandSVG2(band,p,cx,y0){
+  const dash=y=>`<text class="mt" x="${cx}" y="${y}">—</text>`;
+  const hole=(x,y,s,r)=>s==="1"?`<circle class="mfg" cx="${x}" cy="${y}" r="${r}"/>`:(s==="h"||s==="p")?`<circle class="mfo" cx="${x}" cy="${y}" r="${r}"/><path class="mfg" d="M${x},${y-r} A${r},${r} 0 0 0 ${x},${y+r} Z"/>`:`<circle class="mfo" cx="${x}" cy="${y}" r="${r}"/>`;
+  if(band==="recorder"){
+    const f=RECF[p];if(!f)return dash(y0+44);const Y=k=>y0+10+k*9.4+(k>=4?5:0);let c=hole(cx-6,Y(0),f[0],3);
+    for(let k=1;k<=5;k++)c+=hole(cx,Y(k),f[k],3.5);
+    for(const k of [6,7]){const s=f[k];c+=`<circle class="${s==="1"?"mfg":"mfo"}" cx="${cx-2.7}" cy="${Y(k)}" r="2.2"/><circle class="${s==="1"||s==="h"?"mfg":"mfo"}" cx="${cx+2.7}" cy="${Y(k)}" r="2.2"/>`}
+    c+=`<line class="mtab" x1="${cx-7}" x2="${cx+7}" y1="${Y(3)+7}" y2="${Y(3)+7}"/>`;
+    if(f[8]==="b")c+=`<rect class="mfg" x="${cx-5}" y="${Y(7)+6}" width="10" height="2.6"/>`;
+    return c;
+  }
+  if(band==="flute"){
+    const v=FLT[p];if(!v)return dash(y0+44);const [T,L,G,R,TR,PK]=v.split(",");const Y=k=>y0+10+k*9.6+(k>=4?5:0);
+    let c=hole(cx-6,Y(0),T==="T"?"1":"0",3);
+    for(let k=0;k<3;k++)c+=hole(cx,Y(k+1),L[k],3.5);
+    c+=`<rect class="${G==="1"?"mfg":"mfo"}" x="${cx+5.5}" y="${Y(3)-2}" width="4.5" height="4" rx="1"/>`;
+    c+=`<line class="mtab" x1="${cx-7}" x2="${cx+7}" y1="${Y(3)+7}" y2="${Y(3)+7}"/>`;
+    for(let k=0;k<3;k++)c+=hole(cx,Y(k+4),R[k],3.5);
+    if(TR)c+=`<circle class="mfg" cx="${cx+7}" cy="${Y(TR==="1"?4:5)+4.8}" r="1.9"/>`;
+    if(PK==="Eb"||!PK)c+=`<ellipse class="${PK?"mfg":"mfo"}" cx="${cx+5}" cy="${Y(6)+9}" rx="3" ry="2"/>`;
+    else c+=`<text class="mtn" style="font-size:9px" x="${cx}" y="${Y(6)+16}">${esc(prettyAcc(S.nn==="us"?PK:PK.replace("C","Do")))}</text>`;
+    return c;
+  }
+  if(band==="harp"){const t=HARP[p];if(!t)return dash(y0+15);return `<text class="mtn${/o/.test(t)?" madv":""}" style="font-size:10.5px" x="${cx}" y="${y0+15}">${esc(t.replace("-","−"))}</text>`}
+  return "";
+}
+/* letra para la voz: sílabas separadas por guiones; "_" alarga la sílaba anterior */
+function lyrSyl(text){const out=[];String(text||"").trim().split(/\s+/).filter(Boolean).forEach(t=>{if(t==="_"){out.push("");return}t.replace(/-+/g,"-\u0001").split("\u0001").filter(x=>x&&x!=="-").forEach(x=>out.push(x==="_"?"":x))});return out}
+function lyrAssign(ev,text){const s=lyrSyl(text);if(!s.length)return null;let j=0;return ev.map(e=>e.p==null?null:(j<s.length?s[j++]:null))}
+
+/* ---- imprimir / PDF ---- */
+function melPrint(list){
+  const area=$("#printArea");if(!area)return;
+  area.innerHTML=list.map(({m,view})=>{
+    const ev=parseMel(m.seq).ev,I=INST[view]||INST.notas,k=S.melOct[m.id+"|"+view]??autoOct(ev,view),links=(m.links||[]).filter(l=>SAFE_URL(l.url));
+    return `<section class="pr-mel"><h2>${esc(m.title||"Sin título")}</h2>
+     <p class="pr-meta">${esc(I.name)}${view!==m.inst?` · (principal: ${esc((INST[m.inst]||INST.notas).short)})`:""} · ${esc(m.bpm||90)} bpm · ${esc(m.timeSig||"4/4")}${(m.tags||[]).length?" · "+esc(m.tags.join(", ")):""}</p>
+     ${melSVG(ev,{inst:view,k,width:690,style:S.nn,barLen:barLenOf(m.timeSig),lyr:m.lyrics})}
+     <p class="pr-hint">${esc(I.hint)}</p>
+     ${m.notes?`<p class="pr-notes">${esc(m.notes)}</p>`:""}${links.length?`<p class="pr-hint">${links.map(l=>esc((l.label?l.label+": ":"")+l.url)).join(" · ")}</p>`:""}</section>`}).join("");
+  document.body.classList.add("printing");
+  const done=()=>{document.body.classList.remove("printing");area.innerHTML="";removeEventListener("afterprint",done)};
+  addEventListener("afterprint",done);
+  setTimeout(()=>{try{window.print()}catch(e){toast("Este navegador no deja imprimir desde aquí");done()}},60);
+}
+function printListModal(){
+  const all=melsSorted();const ids=$$(".list [data-act=openMel]").map(b=>b.dataset.id);const list=ids.length?ids.map(id=>all.find(m=>m.id===id)).filter(Boolean):all;
+  if(!list.length)return;
+  openModal(`<h2>Imprimir o guardar en PDF</h2><p class="muted" style="margin:0">${list.length===1?"1 melodía":list.length+" melodías"} (las que se ven en la lista). En la ventana de imprimir elige «Guardar como PDF» si lo quieres en archivo.</p>
+   <label class="f">Digitación<select id="prInst"><option value="_main">La de su instrumento principal</option>${INST_ORDER.map(i=>`<option value="${i}">${INST[i].name}</option>`).join("")}</select></label>
+   <div class="modal-foot"><button class="btn" data-act="closeModal">Cancelar</button><button class="btn pri" data-act="prGo">Imprimir</button></div>`);
+  IM.print=list.map(m=>m.id);
 }
 
 /* ======================= IMPORTAR Y GRABAR MELODÍAS ======================= */
@@ -1909,7 +2002,7 @@ function xmlParse(text){
   const names={};doc.querySelectorAll("score-part").forEach(sp=>{names[sp.getAttribute("id")]=(sp.querySelector("part-name")||{}).textContent||""});
   const out=[];
   doc.querySelectorAll("part").forEach((part,pi)=>{
-    let div=1,tr=0,bpm=0,ts=null;const ev=[];let tieOpen=false;
+    let div=1,tr=0,bpm=0,ts=null;const ev=[],ly=[];let tieOpen=false;
     part.querySelectorAll("measure").forEach(ms=>{
       for(const el of ms.children){
         if(el.tagName==="attributes"){const d=el.querySelector("divisions");if(d)div=+d.textContent||1;const t=el.querySelector("transpose");if(t)tr=(+(t.querySelector("chromatic")||{}).textContent||0)+12*(+(t.querySelector("octave-change")||{}).textContent||0);const tm=el.querySelector("time");if(tm&&!ts){const b=tm.querySelector("beats"),bt=tm.querySelector("beat-type");if(b&&bt)ts=b.textContent+"/"+bt.textContent}}
@@ -1923,12 +2016,14 @@ function xmlParse(text){
           const step=pt.querySelector("step").textContent,alt=+(pt.querySelector("alter")||{}).textContent||0,oc=+pt.querySelector("octave").textContent;
           const p=(oc+1)*12+US_PC[step.toLowerCase()]+Math.round(alt)+tr;
           const ties=[...el.querySelectorAll("tie")].map(t=>t.getAttribute("type"));const last=ev[ev.length-1];
-          if(ties.includes("stop")&&tieOpen&&last&&last.p===p)last.d+=d;else ev.push({p,d});
+          if(ties.includes("stop")&&tieOpen&&last&&last.p===p)last.d+=d;
+          else{ev.push({p,d});const lr=el.querySelector("lyric");if(lr&&lr.querySelector("text")){const sy=(lr.querySelector("syllabic")||{}).textContent||"single";ly.push(lr.querySelector("text").textContent.trim()+(sy==="begin"||sy==="middle"?"-":""))}else ly.push("_")}
           tieOpen=ties.includes("start");
         }
       }
     });
-    if(ev.some(e=>e.p!=null)){const nm=names[part.getAttribute("id")];out.push({title:title+(doc.querySelectorAll("part").length>1&&nm?" · "+nm:""),ev,bpm:bpm||100,timeSig:ts||"4/4",tags:[],src:"MusicXML",on:pi===0})}
+    if(ev.some(e=>e.p!=null)){const nm=names[part.getAttribute("id")];const lyrics=ly.some(t=>t!=="_")?ly.reduce((a,t)=>a+(a&&!(a.endsWith("-")&&t!=="_")?" ":"")+t,""):"";
+      out.push({title:title+(doc.querySelectorAll("part").length>1&&nm?" · "+nm:""),ev,lyrics,bpm:bpm||100,timeSig:ts||"4/4",tags:[],src:"MusicXML",on:pi===0})}
   });
   return out;
 }
@@ -2013,9 +2108,9 @@ function imPaint(){
 function imBtn(){const n=IM.items.filter(x=>x.on).length,b=$("#imGo");if(!b)return;b.disabled=!n;b.textContent=n===1?"Abrir en el editor":n?`Importar ${n} melodías`:"Importar"}
 async function imGo(){
   const sel=IM.items.filter(x=>x.on);if(!sel.length)return;const inst=$("#imInst").value;LS.set("melInst",inst);
-  if(sel.length===1){const it=sel[0];closeModal();S.tab="melodies";persist();render();melEdit(null,{title:it.title,inst,bpm:it.bpm,timeSig:it.timeSig,status:"pendiente",tags:it.tags,seq:melSeq(it.ev)});ME.dirty=true;return}
+  if(sel.length===1){const it=sel[0];closeModal();S.tab="melodies";persist();render();melEdit(null,{title:it.title,inst,bpm:it.bpm,timeSig:it.timeSig,status:"pendiente",tags:it.tags,seq:melSeq(it.ev),lyrics:it.lyrics||""});ME.dirty=true;return}
   const b=$("#imGo");b.disabled=true;b.textContent="Guardando…";let n=0;
-  for(const it of sel){try{await Store.put("melodies",uid("m"),{title:it.title,inst,bpm:it.bpm,timeSig:it.timeSig,status:"pendiente",tags:it.tags,seq:melSeq(it.ev),notes:"",links:[],createdAt:Date.now()+n});n++}catch(e){}}
+  for(const it of sel){try{await Store.put("melodies",uid("m"),{title:it.title,inst,bpm:it.bpm,timeSig:it.timeSig,status:"pendiente",tags:it.tags,seq:melSeq(it.ev),lyrics:it.lyrics||"",notes:"",links:[],createdAt:Date.now()+n});n++}catch(e){}}
   closeModal();S.tab="melodies";S.melId=null;persist();render();toast(n+" melodías importadas");
 }
 
@@ -2761,6 +2856,9 @@ const ACT={
     melHL("#melStaff",i);clearTimeout(ACT._mt);ACT._mt=setTimeout(()=>{if(!(Mel.on&&MP.id===m.id))melHL("#melStaff",-1)},500);
   },
   importMel(){importModal()},
+  melPrintOne(b){const m=Store.get("melodies",b.dataset.id);if(m)melPrint([{m,view:melViewOf(m)}])},
+  melPrintList(){printListModal()},
+  prGo(){const v=$("#prInst").value,list=(IM.print||[]).map(id=>Store.get("melodies",id)).filter(Boolean);closeModal();melPrint(list.map(m=>({m,view:v==="_main"?(INST[m.inst]?m.inst:"notas"):v})))},
   imGo(){imGo()},
   newMelRec(){melEdit(null);recOpen()},
   recOpen(){if(Mel.on)Mel.stop();recOpen()},
