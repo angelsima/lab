@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mapa de estilos musicales</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=Instrument+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Mapa conceptual: lienzo a la izquierda (radial o árbol), ficha a la derecha. Color = familia rítmica. */
+:root{
+  --bg:#F5F2EA; --surface:#FFFDF8; --sunk:#ECE7DB; --ink:#1D1B16; --muted:#6A6458; --line:#D9D2C2; --link:#BDB5A3;
+  --accent:#1D1B16; --halo:#F5F2EA;
+  --f-display:"Fraunces", Georgia, serif; --f-body:"Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#15140F; --surface:#1E1D17; --sunk:#26241D; --ink:#EEEAE0; --muted:#A39D8F; --line:#36332A; --link:#4A463B;
+  --accent:#EEEAE0; --halo:#15140F; color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;display:flex;flex-direction:column;-webkit-font-smoothing:antialiased}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;padding:12px 18px;border-bottom:1px solid var(--line);background:var(--surface)}
+h1{font-family:var(--f-display);font-weight:650;font-size:1.35rem;margin:0;letter-spacing:-.01em;margin-right:auto}
+h1 small{font-family:var(--f-body);font-weight:500;font-size:.78rem;color:var(--muted);margin-left:8px;letter-spacing:.02em}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:2px;background:var(--bg)}
+.seg button{border:0;background:none;border-radius:999px;padding:5px 14px;font-weight:600;font-size:.88rem;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.search{position:relative}
+.search input{width:min(260px,60vw);border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:6px 14px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px;font-weight:600;font-size:.86rem}
+.btn:hover{border-color:var(--muted)}
+.btn.pri{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+main{flex:1;display:grid;grid-template-columns:minmax(0,1fr) 340px;min-height:0}
+#stage{position:relative;min-width:0;min-height:0;overflow:hidden}
+#stage svg{width:100%;height:100%;display:block;cursor:grab;touch-action:none}
+#stage svg:active{cursor:grabbing}
+.tools{position:absolute;left:14px;bottom:14px;display:flex;gap:6px;flex-wrap:wrap}
+.hint{position:absolute;right:14px;bottom:14px;font-size:.78rem;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:5px 9px;max-width:300px}
+aside{border-left:1px solid var(--line);background:var(--surface);overflow:auto;padding:18px 20px 28px;display:flex;flex-direction:column;gap:14px}
+.crumbs{display:flex;flex-wrap:wrap;gap:2px 4px;font-size:.8rem;color:var(--muted)}
+.crumbs button{border:0;background:none;padding:0;color:var(--muted);text-decoration:underline;text-underline-offset:2px;font-size:.8rem}
+.crumbs span{opacity:.6}
+aside h2{font-family:var(--f-display);font-weight:650;font-size:1.7rem;line-height:1.1;margin:0;text-wrap:balance}
+.kind{display:flex;align-items:center;gap:8px;font-size:.8rem;color:var(--muted);font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+.sw{width:12px;height:12px;border-radius:50%;flex:none}
+.desc{margin:0;font-size:.98rem}
+.lbl{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:3px 10px 3px 8px;font-size:.84rem;font-weight:500}
+.chip:hover{border-color:var(--muted)}
+.chip.rel{border-style:dashed}
+.legend{display:flex;flex-direction:column;gap:4px}
+.legend button{display:flex;align-items:center;gap:8px;border:0;background:none;padding:3px 0;text-align:left;font-size:.86rem}
+.legend button:hover{text-decoration:underline}
+.legend b{font-weight:600}
+.legend small{color:var(--muted);margin-left:auto;font-variant-numeric:tabular-nums}
+.note{font-size:.82rem;color:var(--muted);border-top:1px solid var(--line);padding-top:12px}
+/* svg */
+.lk{fill:none;stroke:var(--link);stroke-width:1}
+.lk.on{stroke-width:2;stroke-opacity:1}
+.nd circle{stroke:var(--bg);stroke-width:1.5;cursor:pointer}
+.nd text{fill:var(--ink);paint-order:stroke;stroke:var(--halo);stroke-width:3.5px;stroke-linejoin:round;cursor:pointer;font-family:var(--f-body)}
+.nd.leaf text{stroke-width:2.5px}
+.nd.dim{opacity:.28}
+.nd.sel text{font-weight:700}
+.nd.sel circle{stroke:var(--ink);stroke-width:2.5}
+.lv{display:none}
+.lv0, .z1 .lv1, .z2 .lv1, .z2 .lv2, .nd.path .lv{display:inline}
+.rl{fill:none;stroke-width:1.6;stroke-dasharray:5 4}
+.more{fill:var(--muted);font-size:11px}
+/* modal */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10}
+.modal[hidden]{display:none}
+.card{background:var(--surface);border-radius:14px;max-width:820px;width:100%;max-height:92vh;display:flex;flex-direction:column;gap:10px;padding:18px}
+.card h3{font-family:var(--f-display);font-size:1.3rem;margin:0}
+.card p{margin:0;font-size:.88rem;color:var(--muted)}
+.card textarea{flex:1;min-height:340px;width:100%;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.5;border:1px solid var(--line);border-radius:8px;background:var(--bg);padding:10px;white-space:pre;tab-size:2}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.err{color:#C92A2A;font-size:.85rem}
+#draftNote{display:flex;gap:6px;align-items:center;font-size:.8rem;color:var(--muted)}
+#draftNote:empty{display:none}
+#draftNote b{color:var(--ink)}
+@media (max-width:860px){
+  main{grid-template-columns:minmax(0,1fr);grid-template-rows:62vh auto}
+  aside{border-left:0;border-top:1px solid var(--line)}
+  .hint{display:none}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Mapa de estilos musicales<small>Latinoamérica y el Caribe · en construcción</small></h1>
+  <div class="seg" role="group" aria-label="Vista">
+    <button id="vRad" aria-pressed="true">Radial</button>
+    <button id="vTree" aria-pressed="false">Árbol</button>
+  </div>
+  <div class="search"><input id="q" list="names" placeholder="Buscar un estilo…" aria-label="Buscar un estilo"><datalist id="names"></datalist></div>
+  <span id="draftNote"></span>
+  <button class="btn" id="bData">Esquema</button>
+</header>
+<main>
+  <div id="stage">
+    <svg id="svg" role="img" aria-label="Mapa conceptual de estilos musicales"><g id="vp"></g></svg>
+    <div class="tools"><button class="btn" id="bFit">Ver todo</button><button class="btn" id="bExpand" hidden>Desplegar todo</button><button class="btn" id="bCollapse" hidden>Plegar</button></div>
+    <div class="hint" id="hint">Rueda o pellizco para acercar · arrastra para moverte · toca un estilo para ver su ficha</div>
+  </div>
+  <aside id="panel"></aside>
+</main>
+<div class="modal" id="modal" hidden><div class="card" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+  <h3 id="mTitle">Esquema del mapa</h3>
+  <p>Una línea por estilo, con dos espacios de sangría por nivel: <code>Nombre | descripción | ~Relacionado; Otro</code>. Lo relacionado es opcional y se escribe con el nombre exacto de otro estilo. Los cambios se ven al momento y quedan como borrador en este navegador; para que sean definitivos, copia el esquema y pégalo en <code>estilos.txt</code>.</p>
+  <textarea id="src" spellcheck="false"></textarea>
+  <div class="err" id="srcErr"></div>
+  <div class="row"><button class="btn pri" id="mApply">Aplicar</button><button class="btn" id="mCopy">Copiar esquema</button><button class="btn" id="mReset">Volver al original</button><span style="margin-left:auto"></span><button class="btn" id="mClose">Cerrar</button></div>
+</div></div>
+
+<!-- Copia de reserva: solo se usa si no se encuentra estilos.txt. Lo que se edita es estilos.txt. -->
+<script id="datos" type="text/plain">
+Músicas del mundo | Mapa de estilos musicales en construcción. Cada rama se ordena por familias de ADN rítmico más que por países.
+  Latinoamérica y el Caribe | Tres raíces: África occidental y central, España y Europa, pueblos indígenas. Ocho familias rítmicas más lo urbano.
+    Complejo cubano | Clave de son y de rumba. El gran nudo de la música bailable latina: de aquí salen salsa, mambo, chachachá y bolero.
+      El son | Rama de guitarra y tres, del oriente cubano. Estructura en dos partes: canción (el «largo») y montuno.
+        Changüí | Guantánamo, siglo XIX. Tres, marímbula, bongó y güiro. Ancestro del son.
+        Nengón y kiribá | Baracoa. Formas antiguas del son oriental.
+        Son tradicional | La Habana, años 1910-30. Sextetos y septetos (Sexteto Habanero, Septeto Nacional de Ignacio Piñeiro).
+          Son-pregón | Son sobre los gritos de los vendedores ambulantes. «El manisero».
+          Guajira-son | Son de tema campesino. «Guantanamera». | ~Guajira; Guajira flamenca
+          Bolero-son | Bolero con montuno de son. Es la «rumba» de los bailes de salón. | ~Bolero
+        Son montuno | Años 40. Arsenio Rodríguez añade piano, conga y trompetas y alarga el montuno. Raíz directa de la salsa. | ~Salsa
+        Guaracha | Pieza rápida de letra pícara o satírica, nacida en el teatro bufo del siglo XIX. | ~Rumba flamenca
+      Danzón y charanga | Rama europea de salón africanizada por el cinquillo. Formato charanga: flauta, violines, piano, bajo, timbales, güiro.
+        Contradanza | Siglos XVIII-XIX, llegada de Europa y Haití. Madre de la danza y la habanera.
+          Danza cubana | Contradanza criolla del siglo XIX.
+          Habanera | 2/4 lento sobre el tresillo. Viajó a España y a Argentina; abuela del tango. | ~Tangos y tanguillo; Tango; Reguetón
+        Danzón | Miguel Faílde, Matanzas, 1879. Baile nacional cubano, vivo aún en Veracruz y Ciudad de México.
+          Danzonete | 1929. Danzón con parte cantada.
+          Danzón de nuevo ritmo | 1938, Arcaño y sus Maravillas. Su parte final, el «mambo», es la semilla del género mambo. | ~Mambo big band
+        Chachachá | Enrique Jorrín, principios de los 50, «La engañadora». Danzón-mambo más lento y cuadrado.
+        Pachanga | Eduardo Davidson, 1959. Charanga rápida; fiebre en Nueva York a principios de los 60.
+      Rumba y lo afrocubano | Solo tambores, palitos, clave de rumba y canto de llamada y respuesta.
+        Rumba | Barrios de Matanzas y La Habana, siglo XIX. No confundir con la rumba de salón ni con la flamenca. | ~Rumba flamenca
+          Yambú | Lento, de pareja, sin vacunao.
+          Guaguancó | El más popular: juego de pareja con el «vacunao».
+          Columbia | En 6/8, de origen rural, solista masculino que desafía al quinto.
+        Conga de comparsa | Música de carnaval de Santiago y La Habana.
+          Mozambique | Pello el Afrokán, 1963.
+        Música ritual | Tambores batá (santería, yoruba), arará, abakuá y palo (congo). Fuente de cantos y vocabulario de la salsa.
+      La canción | Guitarra y voz.
+        Trova tradicional | Santiago, finales del XIX: Pepe Sánchez, Sindo Garay.
+        Bolero | «Tristezas», Pepe Sánchez, hacia 1883. 2/4 suave sobre cinquillo. | ~Bolero mexicano; Bachata
+        Filin | Años 40-50. Bolero con armonía de jazz (José Antonio Méndez, César Portillo de la Luz).
+        Nueva trova | Desde finales de los 60: Silvio Rodríguez, Pablo Milanés. | ~Nueva Canción
+      Lo campesino | Décima, laúd, tres y guitarra.
+        Punto guajiro | Décimas cantadas o improvisadas en controversia. | ~Seis; Mejorana
+        Guajira | Canción de tema campesino, a menudo en forma de son. Madre de la guajira flamenca. | ~Guajira flamenca
+    Diáspora de la clave | El son y el danzón salen de Cuba y se mezclan con el jazz y el soul. Cuba sigue su propio camino con songo y timba.
+      Mambo big band | Finales de los 40 y los 50. Pérez Prado en México; Machito, Tito Puente y Tito Rodríguez en el Palladium de Nueva York.
+      Latin jazz | Desde los 40: Machito y Mario Bauzá; Dizzy Gillespie con Chano Pozo («Manteca», 1947); Irakere en los 70.
+      Boogaloo | Nueva York, 1966-69. Son con R&B, a menudo en inglés (Joe Cuba, Pete Rodríguez).
+      Salsa | Nueva York, finales de los 60. Etiqueta comercial para son montuno, guaracha, guaguancó, bomba y plena con metales duros. Sello Fania. | ~Son montuno
+        Salsa dura | Años 70: Willie Colón, Héctor Lavoe, Eddie Palmieri.
+        Salsa consciente | Letras sociales: Rubén Blades, «Siembra» (1978).
+        Salsa romántica | Años 80, más lenta: Eddie Santiago, Frankie Ruiz.
+        Salsa puertorriqueña | El Gran Combo.
+        Salsa venezolana | Oscar D'León.
+        Salsa caleña | Colombia: Grupo Niche, Fruko. Baile muy rápido.
+      Songo | Cuba, desde 1969. Los Van Van (Juan Formell y Changuito): son con batería, funk y rock.
+      Timba | Cuba, años 90. NG La Banda, La Charanga Habanera. Bajo agresivo y cambios de marcha («presión»).
+    Caribe hispano | Puerto Rico y República Dominicana: la misma mezcla que Cuba con frutos propios.
+      Puerto Rico | Gran motor de la salsa y del reguetón.
+        Bomba | Barriles en diálogo con quien baila. Ritmos: sicá, yubá, holandés, cuembé. Cortijo e Ismael Rivera en los 50.
+        Plena | Ponce, principios del XX. Panderos y canto narrativo: «el periódico cantado».
+        Música jíbara | Campesina, en décimas, con el cuatro puertorriqueño. Prima del punto guajiro. | ~Punto guajiro
+          Seis | Decenas de variantes (chorreao, mapeyé…).
+          Aguinaldo | Navideño.
+        Danza puertorriqueña | Salón del XIX (Juan Morel Campos). Hermana de la danza cubana.
+      República Dominicana | Merengue, bachata y raíz afrodominicana.
+        Merengue | 2/4 rápido con tambora y güira.
+          Perico ripiao | Merengue típico del Cibao: acordeón, tambora, güira, marimba o bajo.
+          Merengue de orquesta | Saxos y metales; dominante de los 70 a los 90 (Wilfrido Vargas, Juan Luis Guerra).
+          Merengue de calle | Años 2000, electrónico y urbano.
+        Bachata | Años 60, «música de amargue»: bolero y son de guitarras. Pop global con Juan Luis Guerra, Aventura y Romeo Santos. | ~Bolero
+        Palos y salve | Raíz afrodominicana: atabales, salve, gagá.
+      Caribe no hispano | No es Latinoamérica hispana, pero influye mucho en ella.
+        Línea jamaicana | Una cadena de estilos, cada uno hijo del anterior: mento, ska, rocksteady, reggae, dancehall.
+          Mento | Folclore jamaicano, raíz de todo lo demás.
+          Ska | Jamaica, principios de los 60. Hijo del mento y del R&B.
+          Rocksteady | Jamaica, 1966-68. Ska más lento.
+          Reggae | Jamaica, desde finales de los 60.
+          Dancehall | Desde los 80. Abuelo directo del reguetón. | ~Reguetón
+        Calypso | Trinidad y Tobago. | ~Calipso limonense
+          Soca | Desde los 70.
+        Kompa | Haití, desde los 50.
+        Zouk | Antillas francesas, años 80 (Kassav').
+    Sesquiáltera criolla | 6/8 contra 3/4 sobre cuerdas, zapateado y coplas. Viene de los bailes españoles de los siglos XVII-XVIII; prima de la bulería y la guajira flamencas.
+      Sones mexicanos | Cada región de México tiene su son.
+        Son jarocho | Veracruz: jarana, requinto, arpa y zapateado en tarima. La fiesta se llama fandango. «La bamba».
+        Huapango | Son huasteco: violín, jarana huasteca, huapanguera y falsete.
+        Son jalisciense | Origen del mariachi. | ~Mariachi y ranchera
+        Son de tierra caliente | Michoacán y Guerrero.
+        Son istmeño | Istmo de Tehuantepec.
+      Joropo | Llanos de Venezuela y Colombia: arpa, cuatro, maracas. Género nacional venezolano, con muchos «golpes».
+      Bambuco | Andes colombianos: tiple, bandola, guitarra. Su escritura en 3/4 o 6/8 se discute.
+      Familia de la zamacueca | Baile de pañuelo peruano del XIX que se repartió por el Pacífico. | ~Festejo
+        Marinera | Costa del Perú: baile elegante de pañuelo.
+        Tondero | Norte del Perú.
+        Cueca | Chile, Bolivia y Argentina. Baile nacional chileno. | ~Chilenas
+      Folclore argentino | Noroeste y centro de Argentina.
+        Chacarera | Santiago del Estero. Viva y zapateada; la sesquiáltera más clara para un guitarrista.
+        Zamba | Lenta, de pañuelo, muy lírica. No es la samba brasileña.
+        Gato | Baile de pareja, vivo.
+        Escondido | Baile de pareja con juego de esconderse.
+        Malambo | Zapateo masculino de competición.
+        Vidala | Canto lento con caja. Madre de la vidalita flamenca. | ~Vidalita
+      Punto guanacasteco | Costa Rica. Baile nacional.
+    Cumbia y costa colombo-venezolana | 2/4 binario, sin clave. Tambores africanos, flautas indígenas y versos españoles. El género más viajero del continente.
+      Costa caribe de Colombia | El tronco.
+        Cumbia tradicional | Tambor alegre, llamador, tambora, guache, maracas, gaitas o caña de millo. Baile en rueda con velas.
+        Bullerengue | Tambores y cantadoras (Petrona Martínez).
+        Mapalé | Baile de tambor, rápido.
+        Porro | Bandas de viento de Córdoba y Sucre. Lucho Bermúdez lo llevó a orquesta.
+        Vallenato | Valledupar y La Guajira: acordeón, caja y guacharaca. Carlos Vives lo hizo pop en los 90.
+          Paseo vallenato | El aire más común.
+          Son vallenato | Lento y cadencioso. No es el son cubano.
+          Merengue vallenato | No es el dominicano.
+          Puya vallenata | El aire más rápido.
+        Champeta | Cartagena y Palenque, desde los 80: soukous y highlife en sound systems (picós).
+      Pacífico colombiano | Marimba de chonta, cununos y guasá.
+        Currulao | Marimba y cantadoras. | ~Marimba esmeraldeña
+        Bunde | Canto de arrullo y fiesta.
+        Chirimía | Chocó: clarinete, bombardino y tambores.
+      Venezuela | Costa y Zulia.
+        Gaita zuliana | Navideña: furro, charrasca, tambora, cuatro.
+        Tambores de la costa | Culo e' puya, mina.
+        Merengue caraqueño | En 5/8.
+      Hijas de la cumbia | Cada país tiene la suya.
+        Cumbia de orquesta | Colombia, 40-60: Lucho Bermúdez, Pacho Galán.
+        Cumbia mexicana | Desde los 60: Rigo Tovar, Los Ángeles Azules.
+        Cumbia sonidera | México, desde los 70: bailes de sound system.
+        Chicha | Perú, finales de los 60: guitarra eléctrica, psicodelia y melodía andina (Los Destellos, Los Shapis). | ~Huayno
+        Tecnocumbia | Perú, años 90, y cumbia amazónica (70).
+        Cumbia villera | Argentina, finales de los 90 (Pibes Chorros).
+        Cumbia chilena | Fiesta familiar; nueva cumbia chilena en los 2000.
+        Cumbia digital | Desde los 2000, electrónica (sello ZZK).
+    Andes | Ecuador, Perú y Bolivia: capa indígena y mestiza, criolla costeña y afroandina.
+      Sierra andina | Pentatónica, quena, charango, bandas de metales en fiestas.
+        Huayno | Perú y Bolivia: 2/4 con golpe corto-largo. En Argentina, carnavalito.
+        Sanjuanito | Ecuador, 2/4 festivo.
+        Albazo | Ecuador.
+        Yaraví | Lamento lento, Ecuador y Arequipa.
+        Pasillo ecuatoriano | Vals lento y triste (Julio Jaramillo).
+        Música andina urbana | Desde los 60-70: zampoña, quena, charango y bombo (Los Kjarkas). | ~Lambada
+      Carnaval boliviano | Oruro y Gran Poder, con bandas de bronce.
+        Morenada | Pesada, con matracas.
+        Diablada | Danza de diablos.
+        Caporal | Desde los 70, muy enérgico. Sale de la saya. | ~Saya afroboliviana
+        Tinku | Combate ritual.
+        Kullawada | Danza de hilanderos.
+      Costa criolla peruana | Lima y la costa.
+        Vals criollo peruano | Felipe Pinglo, Chabuca Granda.
+        Polka criolla | Vivaz, de la costa.
+      Afroandino | Cajón y tambores.
+        Festejo | Afroperuano, festivo. Su instrumento, el cajón, entró en el flamenco en los 70. | ~Cajón flamenco
+        Landó | Afroperuano, lento y sensual (Susana Baca).
+        Saya afroboliviana | Yungas: tambores y coplas.
+        Bomba del Chota | Afroecuatoriana, con guitarra y bomba.
+        Marimba esmeraldeña | Ecuador, hermana del currulao.
+    Río de la Plata y Litoral | El tresillo de la habanera con la guitarra gaucha y los tambores afrouruguayos. Más al norte, sesquiáltera con arpa y acordeón.
+      Milonga | Raíz del tango.
+        Milonga campera | Guitarra de payador, acento 3-3-2. Vuelve a España como milonga flamenca. | ~Milonga flamenca
+        Milonga ciudadana | Rápida y bailable, sobre el tresillo.
+      Tango | Buenos Aires y Montevideo, hacia 1880-1900. Habanera, milonga, candombe y, con influencia discutida, tango andaluz. | ~Habanera
+        Guardia vieja | Hasta 1920: flauta, violín, guitarra; entra el bandoneón.
+        Tango canción | Desde 1917: Carlos Gardel.
+        Época de oro | Años 30-50: orquestas típicas (D'Arienzo, Troilo, Pugliese, Di Sarli).
+        Tango nuevo | Desde los 50: Astor Piazzolla.
+        Electrotango | Años 2000: Gotan Project, Bajofondo.
+      Vals criollo argentino | El vals del tango.
+      Candombe | Montevideo: tambores chico, repique y piano en «llamadas».
+        Candombe beat | Con instrumentos eléctricos (Rubén Rada).
+      Murga | Coro teatral de carnaval uruguayo con bombo, platillo y redoblante.
+      Cuarteto | Córdoba, desde los 40: «tunga-tunga» (Cuarteto Leo, La Mona Jiménez, Rodrigo).
+      Chamamé | Corrientes: acordeón o bandoneón con guitarras, en sesquiáltera.
+        Rasguido doble | Primo del chamamé.
+      Paraguay | Arpa paraguaya y guitarras.
+        Polca paraguaya | Alterna 6/8 y 3/4; nada que ver en ritmo con la polka europea.
+        Guarania | José Asunción Flores, 1925. Lenta y melancólica.
+    Brasil | Raíz portuguesa y bantú. Su célula es la síncopa de la samba, no la clave.
+      Tronco carioca | Río de Janeiro.
+        Lundu | Siglo XVIII-XIX, raíz afrobrasileña.
+        Maxixe | El «tango brasileño» (Ernesto Nazareth).
+        Choro | Desde 1870: flauta, cavaquinho, violão de 7 cordas, pandeiro (Pixinguinha). El jazz de Brasil.
+        Samba | Desde 1916, «Pelo telefone». Raíz: samba de roda bahiana.
+          Samba-enredo | De las escuelas de samba en el carnaval.
+          Samba-canção | Lenta y romántica, años 30-50.
+          Partido alto | Versos improvisados en rueda.
+          Samba de gafieira | De salón, con metales.
+          Pagode | Años 80 (Fundo de Quintal); pop romántico en los 90.
+          Samba-rock | Samba con soul y rock.
+          Samba-reggae | Salvador, años 80 (Olodum).
+        Bossa nova | 1958-59: João Gilberto, Tom Jobim, Vinicius. La samba resumida en la guitarra con armonía de jazz.
+      Nordeste | Sanfona, zabumba y tambores de carnaval.
+        Forró | Paraguas: sanfona, zabumba, triángulo. Pé-de-serra, eletrônico y universitário.
+          Baião | Luiz Gonzaga, años 40.
+          Xote | De la schottische europea. | ~Chotís
+          Xaxado | Danza de los cangaceiros.
+          Arrasta-pé | Rápido, de fiesta.
+        Frevo | Recife: carnaval muy rápido con metales.
+        Maracatu | De baque virado (Recife, alfaias) y de baque solto (rural).
+        Coco y ciranda | Ruedas y desafíos de versos.
+        Afoxé e ijexá | Bahía, de raíz candomblé.
+        Axé | Pop de carnaval bahiano, años 80-90.
+      Norte amazónico | Pará y Amazonas.
+        Carimbó | Pará.
+        Lambada | Finales de los 80: carimbó con merengue y cumbia. Su gran éxito copiaba «Llorando se fue» de Los Kjarkas. | ~Música andina urbana
+        Boi-bumbá | Parintins.
+        Tecnobrega | Belém, electrónico.
+      Interior | Viola caipira de 10 cuerdas.
+        Música caipira | Modas de viola a dúo.
+        Sertanejo | Hoy el género más vendido de Brasil (sertanejo universitário).
+      Movimientos urbanos | Canción de autor y música de ciudad.
+        MPB | Desde 1965, paraguas de la canción de autor.
+        Tropicália | 1967-68: Caetano Veloso, Gilberto Gil.
+        Funk carioca | Desde los 80-90, del Miami bass; ritmo tamborzão.
+    México y Centroamérica | Acordeón y metales heredados de polkas europeas, canción ranchera y corrido, marimba y costa garifuna.
+      México | Más allá de sus sones.
+        Mariachi y ranchera | Del son jalisciense, con trompetas desde los 30-40. Jorge Negrete, Pedro Infante, José Alfredo Jiménez.
+          Valseada | Ranchera en 3/4.
+          Polkeada | Ranchera en 2/4.
+          Bolero ranchero | Bolero con mariachi. | ~Bolero mexicano
+        Corrido | Balada narrativa heredera del romance español, viva desde la Revolución (1910).
+          Corrido norteño | Con acordeón y bajo sexto.
+          Narcocorrido | Temática del narcotráfico.
+          Corridos tumbados | Desde 2020: requinto y bajo (Natanael Cano, Peso Pluma).
+        Música norteña | Acordeón y bajo sexto (Los Tigres del Norte).
+          Polka norteña | De los inmigrantes europeos del XIX.
+          Redova | Hija de la redowa centroeuropea.
+          Chotís | De la schottische. | ~Xote
+        Tejano | Texas: conjunto tejano y pop tejano (Selena).
+        Banda sinaloense | Viento con tuba (Banda El Recodo, desde 1938).
+          Tecnobanda | Años 90.
+          Duranguense | Años 2000.
+        Bolero mexicano | Agustín Lara, tríos de requinto (Los Panchos), Armando Manzanero. | ~Bolero
+        Trova yucateca | Bolero, bambuco y clave.
+        Chilenas | Costa Chica: hijas de la cueca chilena. | ~Cueca
+      Centroamérica | Marimba, costa afrocaribeña y garifuna.
+        Marimba guatemalteca | Instrumento nacional; son chapín. Emparentada con la de Chiapas.
+        Punta | Garifuna (Belice, Honduras, Guatemala, Nicaragua): tambores y baile de cadera.
+          Punta rock | Desde los 80.
+          Paranda | Guitarra y canto garifuna.
+        Xuc | El Salvador, años 40.
+        Palo de mayo | Nicaragua, costa caribe (Bluefields).
+        Calipso limonense | Costa Rica, Limón (Walter Ferguson). | ~Calypso
+        Tamborito | Panamá: tambores y coro de mujeres.
+        Mejorana | Panamá: décimas con guitarra mejoranera. | ~Punto guajiro
+        Música típica panameña | Acordeón, caja y guacharaca.
+    Urbano y transnacional | Mezclan varias familias y se mueven por todo el continente.
+      Reguetón | Explosión mundial desde 2004 («Gasolina»). Ritmo dembow: el viejo tresillo sobre bombo en negras. | ~Dancehall; Habanera
+        Reggae en español | Panamá, finales de los 80 (El General).
+        Underground puertorriqueño | Años 90 (DJ Playero).
+        Trap latino | Desde 2016: Bad Bunny, Anuel AA.
+        Dembow dominicano | Más rápido y crudo.
+        RKT | Argentina: cumbia y reguetón.
+      Nueva Canción | Años 60-80. Canción de autor y compromiso sobre formas folclóricas. | ~Nueva trova
+        Nueva Canción chilena | Violeta Parra, Víctor Jara, Inti-Illimani, Quilapayún.
+        Nuevo Cancionero argentino | Mercedes Sosa; heredero de Atahualpa Yupanqui.
+      Balada romántica | Desde los 60-70; más pop que ritmo tradicional.
+      Rock en español | Desde los 80; bebe del rock anglosajón.
+  España: flamenco (por ampliar) | De momento solo los cantes de ida y vuelta, para mostrar los puentes con Latinoamérica.
+    Cantes de ida y vuelta | Palos flamencos nacidos del viaje de ida y vuelta con América.
+      Guajira flamenca | Del punto guajiro y la guajira cubanos, en compás de amalgama. | ~Guajira; Guajira-son
+      Colombiana | Pepe Marchena, 1931. Aire de guajira; no viene de Colombia.
+      Milonga flamenca | De la milonga campera rioplatense. | ~Milonga campera
+      Vidalita | De la vidala argentina. | ~Vidala
+      Rumba flamenca | Guaracha, son y rumba cubanos con el tango flamenco (Peret, Gipsy Kings). | ~Rumba; Guaracha
+      Tangos y tanguillo | Emparentados con la habanera, que vino y volvió por Cádiz. | ~Habanera
+      Cajón flamenco | El cajón peruano, adoptado en los 70 con Paco de Lucía. | ~Festejo
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script>
+"use strict";
+/* Los datos se leen de estilos.txt (mismo sitio). Si no se encuentra (por ejemplo, abriendo el HTML desde el disco),
+   se usa la copia de reserva de más abajo. Los cambios hechos con el botón «Esquema» quedan como borrador en este navegador. */
+const ARCHIVO = "estilos.txt";
+let ORIGINAL = document.getElementById("datos").textContent.replace(/^\n+|\s+$/g, ""), FUENTE = "copia interna";
+const LSK = "mapa-estilos:borrador";
+const huella = t => { let h = 5381; for (let i = 0; i < t.length; i++) h = (h * 33 + t.charCodeAt(i)) >>> 0; return h.toString(36) + "." + t.length; };
+let SRC = ORIGINAL, draftState = null;
+function readDraft(){ try { const d = JSON.parse(localStorage.getItem(LSK) || "null"); return d && d.text ? d : null; } catch (e) { return null; } }
+function saveDraft(t){ try { if (t === ORIGINAL) localStorage.removeItem(LSK); else localStorage.setItem(LSK, JSON.stringify({ base: huella(ORIGINAL), text: t })); } catch (e) {} }
+function drawDraftNote(){
+  const n = document.getElementById("draftNote"); const d = readDraft();
+  if (!d) { n.innerHTML = FUENTE === "copia interna" ? `<span>Usando la copia interna: no se encontró ${ARCHIVO}</span>` : ""; return; }
+  if (SRC === d.text) n.innerHTML = `<b>Borrador de este navegador</b><button class="btn" id="dDrop">Descartar</button>`;
+  else n.innerHTML = `<span>Hay un borrador antiguo en este navegador</span><button class="btn" id="dUse">Usarlo</button><button class="btn" id="dDrop">Descartar</button>`;
+}
+document.getElementById("draftNote").addEventListener("click", e => {
+  if (e.target.id === "dDrop") { try { localStorage.removeItem(LSK); } catch (x) {} SRC = ORIGINAL; restart(); }
+  if (e.target.id === "dUse") { const d = readDraft(); if (d) { try { parse(d.text); SRC = d.text; restart(); } catch (x) { alertErr(x); } } }
+});
+function alertErr(x){ const n = document.getElementById("draftNote"); n.innerHTML = `<span class="err">${esc(x.message)}</span>`; }
+
+/* ---------- datos ---------- */
+function parse(txt){
+  const lines = txt.split(/\r?\n/).filter(l => l.trim() && !/^\s*#/.test(l));
+  if (!lines.length) throw new Error("El esquema está vacío.");
+  const stack = []; let root = null; const names = new Map();
+  lines.forEach((l, i) => {
+    const ind = l.match(/^ */)[0].length; const lvl = Math.floor(ind / 2);
+    const parts = l.trim().split(/\s+\|\s+/);
+    const n = { name: parts[0].trim(), desc: "", rel: [], children: [] };
+    for (const p of parts.slice(1)) { if (p.startsWith("~")) n.rel = p.slice(1).split(";").map(s => s.trim()).filter(Boolean); else n.desc = p.trim(); }
+    if (lvl === 0) { if (root) throw new Error(`Línea ${i + 1}: solo puede haber una raíz sin sangría.`); root = n; stack.length = 0; stack.push(n); return; }
+    if (!root) throw new Error("La primera línea debe ser la raíz, sin sangría.");
+    if (lvl > stack.length) throw new Error(`Línea ${i + 1} («${n.name}»): tiene más sangría de la que toca.`);
+    stack.length = lvl; stack[lvl - 1].children.push(n); stack.push(n);
+  });
+  return root;
+}
+
+const PAL = ["#C92A2A","#C2255C","#D9480F","#1971C2","#B07D00","#845E3E","#7048E8","#2F9E44","#0C8599","#5C5F66","#AE3EC9","#E8590C","#3B5BDB","#66A80F"];
+const dark = matchMedia("(prefers-color-scheme: dark)");
+let root, byName, families;
+
+function build(){
+  const data = parse(SRC);
+  root = d3.hierarchy(data, d => d.children.length ? d.children : null);
+  byName = new Map(); root.each(d => { if (!byName.has(d.data.name)) byName.set(d.data.name, d); });
+  /* familia = nivel 2; si una rama no llega, su nivel 1 */
+  families = [];
+  root.each(d => { if (d.depth === 2 || (d.depth === 1 && !d.children)) families.push(d); });
+  families.forEach((f, i) => f.fam = { name: f.data.name, color: PAL[i % PAL.length], node: f });
+  root.each(d => { const f = d.ancestors().find(a => a.fam); d.famRef = f ? f.fam : null; });
+  root.each(d => d.id = "n" + (d.data.name + "_" + d.depth).replace(/[^a-zA-Z0-9]/g, c => c.charCodeAt(0).toString(36)));
+  document.getElementById("names").innerHTML = [...byName.keys()].sort((a, b) => a.localeCompare(b, "es")).map(n => `<option value="${esc(n)}">`).join("");
+}
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+function col(d){ const c = d && d.famRef ? d.famRef.color : null; if (!c) return getComputedStyle(document.documentElement).getPropertyValue("--ink").trim(); return dark.matches ? d3.color(c).brighter(.9).formatHex() : c; }
+const leafCount = d => d.leaves().length;
+
+/* ---------- lienzo ---------- */
+const svg = d3.select("#svg"), vp = d3.select("#vp");
+const zoom = d3.zoom().scaleExtent([.15, 6]).on("zoom", e => { vp.attr("transform", e.transform); svg.classed("z1", e.transform.k > 1.1 && e.transform.k <= 2).classed("z2", e.transform.k > 2); });
+svg.call(zoom).on("dblclick.zoom", null);
+let view = "rad", sel = null;
+const vpRect = () => document.getElementById("stage").getBoundingClientRect();
+
+function fitTo(bb, pad = 30, dur = 650){
+  const r = vpRect(); const k = Math.min((r.width - pad * 2) / bb.width, (r.height - pad * 2) / bb.height, 2.2);
+  const t = d3.zoomIdentity.translate(r.width / 2, r.height / 2).scale(k).translate(-(bb.x + bb.width / 2), -(bb.y + bb.height / 2));
+  svg.transition().duration(dur).call(zoom.transform, t);
+}
+function fitAll(dur){ const bb = vp.node().getBBox(); if (bb.width) fitTo(bb, 24, dur); }
+function centerOn(x, y, k){ const r = vpRect(); svg.transition().duration(650).call(zoom.transform, d3.zoomIdentity.translate(r.width / 2, r.height / 2).scale(k).translate(-x, -y)); }
+
+/* ---------- vista radial ---------- */
+let rad = null;
+function drawRadial(){
+  vp.selectAll("*").remove();
+  const leaves = root.leaves().length;
+  const R = Math.max(300, leaves * 14 / (2 * Math.PI));
+  d3.cluster().size([2 * Math.PI, R]).separation((a, b) => (a.parent === b.parent ? 1 : 1.6))(root);
+  const H = d3.max(root.descendants().filter(d => d.children), d => d.depth) + 1;
+  root.each(d => { if (d.children) d.y = d.depth === 0 ? 0 : R * (0.12 + 0.82 * d.depth / H); });
+  const P = d => d3.pointRadial(d.x, d.y);
+  rad = { R, P };
+  vp.append("g").attr("class", "links").selectAll("path").data(root.links()).join("path")
+    .attr("class", "lk").attr("id", d => "l" + d.target.id)
+    .attr("d", d3.linkRadial().angle(d => d.x).radius(d => d.y))
+    .attr("stroke", d => d.target.depth >= 2 ? col(d.target) : null).attr("stroke-opacity", d => d.target.depth >= 2 ? .45 : 1);
+  vp.append("g").attr("class", "rels");
+  const g = vp.append("g").selectAll("g").data(root.descendants()).join("g")
+    .attr("class", d => "nd" + (d.children ? "" : " leaf")).attr("id", d => d.id)
+    .attr("transform", d => `translate(${P(d)})`)
+    .on("click", (e, d) => { e.stopPropagation(); select(d, false); });
+  g.append("circle").attr("r", d => d.depth === 0 ? 7 : d.depth === 1 ? 6 : d.depth === 2 ? 5.5 : d.children ? 3.6 : 2.6).attr("fill", d => col(d));
+  g.append("title").text(d => d.data.name);
+  /* hojas: etiqueta radial hacia fuera */
+  g.filter(d => !d.children).append("text")
+    .attr("transform", d => { const a = d.x * 180 / Math.PI - 90; return `rotate(${a})` + (d.x >= Math.PI ? " rotate(180)" : ""); })
+    .attr("x", d => d.x >= Math.PI ? -7 : 7).attr("dy", "0.32em").attr("text-anchor", d => d.x >= Math.PI ? "end" : "start")
+    .attr("font-size", 11).text(d => d.data.name);
+  /* nodos internos: etiqueta horizontal; aparecen al acercar (y siempre en el camino de lo elegido) */
+  g.filter(d => d.children).append("text")
+    .attr("class", d => d.depth === 0 ? "lv lv0" : d.depth <= 2 ? "lv lv1" : "lv lv2")
+    .attr("dy", d => d.depth <= 1 ? "-0.9em" : "-0.75em").attr("text-anchor", "middle")
+    .attr("font-size", d => d.depth === 0 ? 17 : d.depth === 1 ? 14 : d.depth === 2 ? 13 : 11)
+    .attr("font-weight", d => d.depth <= 2 ? 700 : 600)
+    .attr("fill", d => d.depth === 2 ? col(d) : null)
+    .text(d => d.data.name);
+  /* banda exterior con el nombre de cada familia */
+  let maxL = 0; g.filter(d => !d.children).select("text").each(function(){ maxL = Math.max(maxL, this.getComputedTextLength()); });
+  const Rb = R + maxL + 18, bw = 26, step = 2 * Math.PI / root.leaves().length;
+  const band = vp.insert("g", ".rels").attr("class", "band");
+  families.forEach((f, i) => {
+    const xs = f.leaves().map(l => l.x); const a0 = d3.min(xs) - step * .45, a1 = d3.max(xs) + step * .45, mid = (a0 + a1) / 2;
+    const fg = band.append("g").attr("class", "fam").style("cursor", "pointer").on("click", e => { e.stopPropagation(); select(f); });
+    fg.append("path").attr("d", d3.arc()({ innerRadius: Rb, outerRadius: Rb + bw, startAngle: a0, endAngle: a1 })).attr("fill", col(f)).attr("fill-opacity", .16).attr("stroke", col(f)).attr("stroke-opacity", .5);
+    const flip = mid > Math.PI / 2 && mid < 3 * Math.PI / 2; const rm = Rb + bw / 2 + (flip ? 4.5 : -4.5);
+    const p = (a, r) => d3.pointRadial(a, r);
+    const [s, e2] = flip ? [p(a1, rm), p(a0, rm)] : [p(a0, rm), p(a1, rm)];
+    const pid = "fp" + i; const large = a1 - a0 > Math.PI ? 1 : 0;
+    fg.append("path").attr("id", pid).attr("fill", "none").attr("d", `M${s[0]},${s[1]}A${rm},${rm} 0 ${large} ${flip ? 0 : 1} ${e2[0]},${e2[1]}`);
+    const t = fg.append("text").attr("font-size", 13).attr("font-weight", 700).attr("fill", col(f)).attr("dy", "0")
+      .append("textPath").attr("href", "#" + pid).attr("startOffset", "50%").attr("text-anchor", "middle").text(f.data.name);
+    const room = (a1 - a0) * rm - 8; let fs = 13; while (t.node().getComputedTextLength() > room && fs > 8) { fs -= .5; t.attr("font-size", fs); t.node().parentNode.setAttribute("font-size", fs); }
+  });
+  svg.on("click", () => select(null));
+  applySel();
+}
+
+/* ---------- vista árbol ---------- */
+const open = new Set();
+function initOpen(){ open.clear(); root.each(d => { if (d.depth < 2 && d.children) open.add(d); }); }
+function drawTree(animate){
+  const prev = new Map(); vp.selectAll(".nd").each(function(d){ prev.set(d.data.name + d.depth, this.getAttribute("transform")); });
+  vp.selectAll("*").remove();
+  const vis = root.copy(); /* copia con hijos solo de los nodos abiertos */
+  const map = new Map(); root.each(d => map.set(d.id, d));
+  vis.each(d => { d.src = map.get(idOf(d)); });
+  function idOf(d){ return "n" + (d.data.name + "_" + d.depth).replace(/[^a-zA-Z0-9]/g, c => c.charCodeAt(0).toString(36)); }
+  vis.each(d => { if (d.children && !open.has(d.src)) { d._kids = d.children.length; d.children = null; } });
+  const lay = d3.tree().nodeSize([26, 1]).separation((a, b) => a.parent === b.parent ? 1 : 1.3)(vis);
+  /* columnas: cada nivel empieza donde acaba la etiqueta más larga del anterior */
+  const ctx = (drawTree.cv || (drawTree.cv = document.createElement("canvas"))).getContext("2d");
+  const W = d => { ctx.font = `${d.depth <= 2 || d.src.children ? 700 : 400} ${d.depth === 2 ? 14 : 13}px "Instrument Sans", system-ui, sans-serif`; return ctx.measureText(d.data.name).width + (d._kids ? 34 : 0); };
+  const maxW = []; lay.each(d => { d.w = W(d); maxW[d.depth] = Math.max(maxW[d.depth] || 0, d.w); });
+  const colX = [0]; for (let k = 1; k < maxW.length; k++) colX[k] = colX[k - 1] + maxW[k - 1] + 64;
+  lay.each(d => d.y = colX[d.depth]);
+  vp.append("g").selectAll("path").data(lay.links()).join("path").attr("class", "lk")
+    .attr("d", l => { const x0 = l.source.y + l.source.w + 18, y0 = l.source.x, x1 = l.target.y - 8, y1 = l.target.x, m = (x0 + x1) / 2; return `M${x0},${y0}C${m},${y0} ${m},${y1} ${x1},${y1}`; })
+    .attr("stroke", d => d.target.depth >= 2 ? col(d.target.src) : null).attr("stroke-opacity", d => d.target.depth >= 2 ? .5 : 1);
+  const g = vp.append("g").selectAll("g").data(lay.descendants()).join("g")
+    .attr("class", d => "nd" + (d.src.children ? "" : " leaf")).attr("id", d => d.src.id)
+    .attr("transform", d => `translate(${d.y},${d.x})`)
+    .on("click", (e, d) => { e.stopPropagation(); const s = d.src; if (s.children) { open.has(s) ? closeDeep(s) : open.add(s); } select(s, false); drawTree(true); });
+  g.append("circle").attr("r", d => d.depth <= 1 ? 6 : d.src.children ? 5 : 3.5)
+    .style("fill", d => d.src.children && open.has(d.src) ? "var(--surface)" : col(d.src))
+    .style("stroke", d => col(d.src)).style("stroke-width", d => d.src.children ? 2 : 1.5);
+  g.append("text").attr("x", 10).attr("dy", "0.32em").attr("font-size", d => d.depth === 2 ? 14 : 13)
+    .attr("font-weight", d => d.depth <= 2 ? 700 : d.src.children ? 600 : 400)
+    .attr("fill", d => d.depth === 2 ? col(d.src) : null)
+    .text(d => d.data.name);
+  g.filter(d => d._kids).append("text").attr("class", "more").attr("dy", "0.32em")
+    .attr("x", d => 16 + d.w - 34 + 4)
+    .text(d => `+${leafCount(d.src)}`);
+  svg.on("click", () => select(null));
+  applySel();
+}
+function closeDeep(d){ d.each(x => open.delete(x)); }
+
+/* ---------- selección y ficha ---------- */
+function select(d, move = true){
+  sel = d;
+  if (d && view === "tree") { let changed = false; d.ancestors().slice(1).forEach(a => { if (!open.has(a)) { open.add(a); changed = true; } }); if (changed) drawTree(); }
+  applySel(); renderPanel();
+  if (d && move) { const n = document.getElementById(d.id); if (n) { const m = n.transform.baseVal.consolidate().matrix; centerOn(m.e, m.f, view === "rad" ? 2 : 1.1); } }
+}
+function applySel(){
+  vp.selectAll(".rels").selectAll("*").remove();
+  const nodes = vp.selectAll(".nd");
+  nodes.classed("sel", false).classed("dim", false).classed("path", false);
+  vp.selectAll(".lk").classed("on", false);
+  vp.selectAll(".fam").style("opacity", null);
+  if (!sel) return;
+  const keep = new Set([...sel.ancestors(), ...sel.descendants()].map(x => x.id));
+  const rels = relsOf(sel); rels.forEach(r => keep.add(r.id));
+  const onPath = new Set(sel.ancestors().map(x => x.id)); rels.forEach(r => r.ancestors().forEach(a => { if (a.depth >= 2) onPath.add(a.id); }));
+  nodes.classed("dim", d => !keep.has((d.src || d).id)).classed("sel", d => (d.src || d) === sel).classed("path", d => onPath.has((d.src || d).id));
+  vp.selectAll(".fam").style("opacity", (f, i) => { const fam = families[i]; return (sel.famRef && sel.famRef.node === fam) || rels.some(r => r.famRef && r.famRef.node === fam) || !sel.famRef ? null : .35; });
+  sel.ancestors().forEach(a => vp.select("#l" + a.id).classed("on", true));
+  if (view === "rad" && rad) {
+    const g = vp.select(".rels");
+    rels.forEach(r => { const a = rad.P(sel), b = rad.P(r);
+      g.append("path").attr("class", "rl").attr("stroke", col(sel)).attr("d", `M${a[0]},${a[1]}Q${(a[0] + b[0]) * .15},${(a[1] + b[1]) * .15} ${b[0]},${b[1]}`); });
+  }
+}
+function relsOf(d){
+  const out = new Set();
+  d.data.rel.forEach(n => { const x = byName.get(n); if (x && x !== d) out.add(x); });
+  root.each(x => { if (x !== d && x.data.rel.includes(d.data.name)) out.add(x); });
+  return [...out];
+}
+function chip(d, cls = ""){ return `<button class="chip ${cls}" data-go="${esc(d.data.name)}"><span class="sw" style="background:${col(d)}"></span>${esc(d.data.name)}</button>`; }
+function renderPanel(){
+  const p = document.getElementById("panel");
+  if (!sel) {
+    const top = root.children || [];
+    p.innerHTML = `<div><h2>${esc(root.data.name)}</h2></div><p class="desc">${esc(root.data.desc)}</p>
+      <p class="desc"><b>${root.leaves().length}</b> estilos finales en <b>${root.descendants().length}</b> nodos.</p>
+      ${top.map(t => `<div><div class="lbl">${esc(t.data.name)}</div><div class="legend">${(t.children || []).map(f => `<button data-go="${esc(f.data.name)}"><span class="sw" style="background:${col(f)}"></span><b>${esc(f.data.name)}</b><small>${leafCount(f)}</small></button>`).join("")}</div></div>`).join("")}
+      <p class="note">Color = familia rítmica. Las líneas discontinuas que aparecen al elegir un estilo marcan parentescos entre ramas, como los cantes de ida y vuelta. Para ampliar el mapa con otros estilos, edita el <button class="chip" id="pData">Esquema</button></p>`;
+  } else {
+    const d = sel; const anc = d.ancestors().reverse().slice(0, -1);
+    const kids = d.children || []; const rels = relsOf(d);
+    const kind = d.depth === 0 ? "Raíz" : d.depth === 1 ? "Gran región" : d.depth === 2 ? "Familia" : kids.length ? "Rama o género" : "Estilo";
+    p.innerHTML = `<div class="crumbs">${anc.map(a => `<button data-go="${esc(a.data.name)}">${esc(a.data.name)}</button><span>›</span>`).join("")}</div>
+      <div><div class="kind"><span class="sw" style="background:${col(d)}"></span>${kind}${d.famRef && d.depth > 2 ? " · " + esc(d.famRef.name) : ""}</div><h2 style="margin-top:6px">${esc(d.data.name)}</h2></div>
+      ${d.data.desc ? `<p class="desc">${esc(d.data.desc)}</p>` : ""}
+      ${kids.length ? `<div><div class="lbl">Contiene · ${leafCount(d)} estilos</div><div class="chips">${kids.map(k => chip(k)).join("")}</div></div>` : ""}
+      ${rels.length ? `<div><div class="lbl">Relacionado</div><div class="chips">${rels.map(r => chip(r, "rel")).join("")}</div></div>` : ""}
+      <div class="row"><button class="btn" id="pBack">Volver al mapa completo</button></div>`;
+  }
+}
+document.getElementById("panel").addEventListener("click", e => {
+  const b = e.target.closest("[data-go]"); if (b) { const d = byName.get(b.dataset.go); if (d) select(d); return; }
+  if (e.target.id === "pBack") { select(null); fitAll(); }
+  if (e.target.id === "pData") openData();
+});
+
+/* ---------- controles ---------- */
+function setView(v){
+  view = v; document.getElementById("vRad").setAttribute("aria-pressed", v === "rad"); document.getElementById("vTree").setAttribute("aria-pressed", v === "tree");
+  document.getElementById("bExpand").hidden = v !== "tree"; document.getElementById("bCollapse").hidden = v !== "tree";
+  if (v === "rad") drawRadial(); else { if (sel) sel.ancestors().forEach(a => open.add(a)); drawTree(); }
+  if (sel) select(sel); else fitAll(0);
+  try { localStorage.setItem("mapa-estilos:vista", v); } catch (e) {}
+}
+document.getElementById("vRad").onclick = () => setView("rad");
+document.getElementById("vTree").onclick = () => setView("tree");
+document.getElementById("bFit").onclick = () => fitAll();
+function fitWidth(){ const bb = vp.node().getBBox(), r = vpRect(); const k = Math.min((r.width - 48) / bb.width, 1); svg.transition().duration(650).call(zoom.transform, d3.zoomIdentity.translate(24 - bb.x * k, 20 - bb.y * k).scale(k)); }
+document.getElementById("bExpand").onclick = () => { root.each(d => { if (d.children) open.add(d); }); drawTree(); fitWidth(); };
+document.getElementById("bCollapse").onclick = () => { initOpen(); drawTree(); fitAll(); };
+const q = document.getElementById("q");
+function doSearch(){ const v = q.value.trim().toLowerCase(); if (!v) return;
+  let d = [...byName.values()].find(x => x.data.name.toLowerCase() === v) || [...byName.values()].find(x => x.data.name.toLowerCase().startsWith(v)) || [...byName.values()].find(x => x.data.name.toLowerCase().includes(v));
+  if (d) { select(d); q.blur(); } }
+q.addEventListener("change", doSearch);
+q.addEventListener("keydown", e => { if (e.key === "Enter") doSearch(); });
+
+/* ---------- esquema editable ---------- */
+const modal = document.getElementById("modal"), src = document.getElementById("src"), srcErr = document.getElementById("srcErr");
+function openData(){ src.value = SRC; srcErr.textContent = ""; modal.hidden = false; src.focus(); }
+document.getElementById("bData").onclick = openData;
+document.getElementById("mClose").onclick = () => modal.hidden = true;
+modal.addEventListener("click", e => { if (e.target === modal) modal.hidden = true; });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !modal.hidden) modal.hidden = true; });
+src.addEventListener("keydown", e => { if (e.key === "Tab") { e.preventDefault(); const s = src.selectionStart; src.setRangeText("  ", s, src.selectionEnd, "end"); } });
+document.getElementById("mApply").onclick = () => {
+  try { parse(src.value); } catch (err) { srcErr.textContent = err.message; return; }
+  SRC = src.value; saveDraft(SRC);
+  restart(); modal.hidden = true;
+};
+document.getElementById("mReset").onclick = () => { src.value = ORIGINAL; srcErr.textContent = "Restaurado en el editor. Pulsa Aplicar para usarlo."; };
+document.getElementById("mCopy").onclick = async () => { try { await navigator.clipboard.writeText(src.value); srcErr.textContent = "Copiado."; } catch (e) { src.select(); srcErr.textContent = "Selecciona y copia con Ctrl+C / Cmd+C."; } };
+
+function restart(){ sel = null; build(); initOpen(); renderPanel(); setView(view); drawDraftNote(); }
+dark.addEventListener("change", () => setView(view));
+addEventListener("resize", () => { if (!sel) fitAll(0); });
+async function start(){
+  try { const r = await fetch(ARCHIVO, { cache: "no-cache" }); if (r.ok) { const t = (await r.text()).replace(/^\uFEFF/, "").replace(/\s+$/, ""); parse(t); ORIGINAL = t; FUENTE = ARCHIVO; } } catch (e) { if (e && e.message && FUENTE !== ARCHIVO && !/fetch|Failed|NetworkError|URL/i.test(e.message)) console.warn(e); }
+  SRC = ORIGINAL; const d = readDraft(); if (d && d.base === huella(ORIGINAL)) { try { parse(d.text); SRC = d.text; } catch (e) {} }
+  try { build(); } catch (err) { SRC = ORIGINAL; build(); }
+  initOpen(); renderPanel(); drawDraftNote();
+  let v0 = "rad"; try { v0 = localStorage.getItem("mapa-estilos:vista") || "rad"; } catch (e) {}
+  setView(v0 === "tree" ? "tree" : "rad");
+}
+start();
+try { document.fonts.ready.then(() => { if (!root) return; if (view === "tree") drawTree(); else drawRadial(); if (!sel) fitAll(0); }); } catch (e) {}
+</script>
+</body>
+</html>
