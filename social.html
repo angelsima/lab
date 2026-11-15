@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Social · lab</title>
+<meta name="theme-color" content="#f5f0e6">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Social">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%23f1e3d3'/%3E%3Ccircle cx='50' cy='50' r='30' fill='%23e0b394'/%3E%3Ccircle cx='50' cy='50' r='14' fill='%23b5532f'/%3E%3C/svg%3E">
+<style>
+:root{
+  --paper:#f5f0e6; --card:#fffbf3; --ink:#2a2723; --muted:#857c6d; --line:#e3d9c6;
+  --acc:#b5532f; --acc-soft:#f1e0d2; --olive:#5e6e3b; --soft:#efe6d4;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.45 var(--sans)}
+body{padding-bottom:env(safe-area-inset-bottom)}
+button,input,select,textarea{font:inherit;color:inherit}
+input,select,textarea{font-size:16px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:.55rem .7rem;width:100%}
+textarea{resize:vertical;min-height:2.8rem}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--acc-soft);border-color:var(--acc)}
+button{cursor:pointer}
+.btn{background:var(--acc);color:#fff;border:0;border-radius:10px;padding:.55rem 1rem;font-weight:600;white-space:nowrap}
+.btn.sec{background:var(--soft);color:var(--ink)}
+.btn.peligro{background:none;color:#a33;border:1px solid #e3b9b9}
+.link{background:none;border:0;padding:0;color:var(--acc);text-decoration:underline;text-underline-offset:2px}
+.muted{color:var(--muted)}
+.hidden{display:none!important}
+.wrap{max-width:760px;margin:0 auto;padding:0 14px}
+
+header{position:sticky;top:0;z-index:5;background:var(--paper);border-bottom:1px solid var(--line);padding-top:env(safe-area-inset-top)}
+.top{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0 4px}
+h1{font-family:var(--serif);font-weight:600;font-size:1.45rem;margin:0;letter-spacing:.01em}
+h1 span{color:var(--acc)}
+nav{display:flex;gap:4px}
+nav button{flex:1;background:none;border:0;border-bottom:3px solid transparent;padding:.55rem .2rem;font-weight:600;color:var(--muted)}
+nav button.on{color:var(--ink);border-color:var(--acc)}
+.menu-btn{background:none;border:0;font-size:1.3rem;padding:.2rem .4rem;color:var(--muted)}
+
+.banner{background:#fff4d6;border:1px solid #ecd58f;border-radius:10px;padding:.6rem .8rem;margin:12px 0;font-size:.9rem}
+
+/* Captura rápida */
+.rapida{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin:14px 0}
+.rapida .fila{display:flex;gap:8px}
+.rapida .fila > *{min-width:0}
+.rapida #qTipo{flex:0 0 auto;width:auto}
+.rapida textarea{margin:8px 0}
+.rapida .acciones{display:flex;justify-content:flex-end}
+
+/* Listas */
+.toolbar{display:flex;gap:8px;margin:8px 0 12px}
+.toolbar input{flex:1}
+.toolbar select{width:auto;max-width:42%}
+.card{display:block;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px}
+.card:hover{border-color:#d4c5aa}
+.card-top{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 8px}
+.nombre{font-family:var(--serif);font-size:1.15rem;font-weight:600;margin-right:auto}
+.chip{font-size:.75rem;background:var(--soft);border-radius:99px;padding:.1rem .55rem;color:#5a5348;white-space:nowrap}
+.chip.t{background:#e9eedd;color:var(--olive)}
+.chip.i{background:var(--acc-soft);color:#8e3a1f}
+.card-nota{margin-top:4px;color:#4a453e;font-size:.95rem}
+.card-pie{margin-top:4px;font-size:.8rem;color:var(--muted)}
+.aviso{color:var(--acc);font-weight:600}
+.vacio{text-align:center;color:var(--muted);padding:2rem 1rem}
+
+/* Círculos */
+.seg{display:flex;background:var(--soft);border-radius:12px;padding:3px;gap:3px;margin:8px 0 6px}
+.seg button{flex:1;border:0;background:none;border-radius:9px;padding:.45rem .3rem;font-weight:600;color:var(--muted);font-size:.9rem}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.lienzo{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:6px}
+.lienzo svg{display:block;width:100%;height:auto}
+svg .ring-label{font:600 calc(var(--fs,12px)*.95) var(--sans);fill:#9b8f7c;text-anchor:middle}
+svg .dot-label{font:calc(var(--fs,12px)*1.05) var(--sans);fill:var(--ink);paint-order:stroke;stroke:#fffbf3;stroke-width:3px;stroke-linejoin:round}
+svg .dot{cursor:pointer}
+svg .dot:hover circle{stroke:var(--ink);stroke-width:2}
+svg .axis{font:600 var(--fs,12px) var(--sans);fill:var(--muted)}
+svg .quad{font:italic calc(var(--fs,12px)*1.1) var(--serif);fill:#b3a690}
+.leyenda{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:.8rem;color:var(--muted);margin:8px 4px}
+.leyenda i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:-1px}
+.sin-colocar{margin:10px 4px;font-size:.9rem}
+
+/* Apuntes */
+.filtros{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 12px;align-items:center}
+.filtros button{border:1px solid var(--line);background:var(--card);border-radius:99px;padding:.25rem .75rem;font-size:.85rem}
+.filtros button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.filtros label{margin-left:auto;font-size:.85rem;color:var(--muted);display:flex;gap:6px;align-items:center}
+.filtros input{width:auto}
+.ap{display:flex;gap:10px;align-items:flex-start;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px}
+.ap input[type=checkbox]{width:20px;height:20px;margin-top:2px;flex:0 0 auto;accent-color:var(--olive)}
+.ap-txt{flex:1}
+.ap-meta{font-size:.8rem;color:var(--muted);margin-top:2px}
+.ap.hecho .ap-txt{opacity:.5;text-decoration:line-through}
+.x{background:none;border:0;color:var(--muted);font-size:1rem;padding:0 2px}
+
+/* Ficha */
+dialog{overflow:auto;border:0;padding:0;background:var(--paper);color:var(--ink);width:100%;max-width:680px;border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.25)}
+dialog::backdrop{background:rgba(40,30,20,.45)}
+@media (max-width:700px){dialog{max-width:100%;width:100%;height:100%;max-height:100%;margin:0;border-radius:0}}
+.ficha-head{position:sticky;top:0;background:var(--paper);display:flex;gap:8px;align-items:center;padding:12px 14px;padding-top:calc(12px + env(safe-area-inset-top));border-bottom:1px solid var(--line);z-index:2}
+.ficha-head input{font-family:var(--serif);font-size:1.35rem;font-weight:600;border-color:transparent;background:transparent;padding:.2rem .4rem}
+.ficha-head input:focus{background:#fff}
+.cerrar{background:var(--soft);border:0;border-radius:50%;width:36px;height:36px;font-size:1.1rem;flex:0 0 auto}
+.ficha-body{padding:14px 14px 40px}
+.ficha-body label{display:block;font-size:.8rem;font-weight:600;color:var(--muted);margin:12px 0 4px;text-transform:uppercase;letter-spacing:.04em}
+.ficha-body label textarea,.ficha-body label input{margin-top:4px;text-transform:none;letter-spacing:0;font-weight:400;color:var(--ink)}
+.dos{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+@media (max-width:480px){.dos{grid-template-columns:1fr}}
+.nivel{margin-top:10px}
+.nivel .t{font-size:.8rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.nivel .seg button{font-size:.78rem;padding:.4rem .1rem}
+h3{font-family:var(--serif);font-size:1.1rem;margin:22px 0 6px;font-weight:600}
+.add{display:flex;gap:8px;align-items:flex-start}
+.add > textarea,.add > input{flex:1}
+.add select{width:auto;flex:0 0 auto}
+.nota{border-left:3px solid var(--acc-soft);padding:6px 0 6px 12px;margin:10px 0}
+.nota-fecha{font-size:.78rem;color:var(--muted);display:flex;gap:10px;align-items:center}
+.nota-fecha button{background:none;border:0;color:var(--muted);font-size:.8rem;padding:0}
+.nota-txt{white-space:pre-wrap}
+.zona-peligro{margin-top:30px;text-align:center}
+
+/* Login */
+.login{max-width:360px;margin:12vh auto;padding:0 18px;text-align:center}
+.login h1{font-size:2rem;margin-bottom:6px}
+.login form{display:grid;gap:10px;margin-top:20px}
+.error{color:#a33;font-size:.9rem;min-height:1.2em}
+
+/* Menú */
+.menu{position:absolute;right:14px;top:52px;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.12);padding:6px;z-index:10;min-width:220px}
+.menu button{display:block;width:100%;text-align:left;background:none;border:0;padding:.55rem .7rem;border-radius:8px}
+.menu button:hover{background:var(--soft)}
+.menu .info{font-size:.78rem;color:var(--muted);padding:.4rem .7rem;border-top:1px solid var(--line);margin-top:4px}
+
+.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:#fff;border-radius:12px;padding:.6rem 1rem;display:flex;gap:12px;align-items:center;z-index:50;max-width:92vw;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+.toast button{background:none;border:0;color:#f3b38f;font-weight:700;padding:0}
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<div id="vLogin" class="login hidden">
+  <h1>Social<span>.</span></h1>
+  <div class="muted">Notas de la gente que te importa</div>
+  <form id="loginForm">
+    <input id="lEmail" type="email" placeholder="Correo" autocomplete="username" required>
+    <input id="lPass" type="password" placeholder="Contraseña" autocomplete="current-password" required>
+    <button class="btn" type="submit">Entrar</button>
+    <div id="lError" class="error"></div>
+  </form>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="vApp" class="hidden">
+  <header>
+    <div class="wrap">
+      <div class="top">
+        <h1>Social<span>.</span></h1>
+        <button class="menu-btn" id="menuBtn" aria-label="Menú">⋯</button>
+      </div>
+      <nav>
+        <button data-tab="personas" class="on">Personas</button>
+        <button data-tab="circulos">Círculos</button>
+        <button data-tab="apuntes">Apuntes</button>
+      </nav>
+    </div>
+    <div id="menu" class="menu hidden">
+      <button id="mExportar">⬇︎ Exportar copia (JSON)</button>
+      <button id="mImportar">⬆︎ Importar copia</button>
+      <button id="mSalir">Cerrar sesión</button>
+      <div class="info" id="mInfo"></div>
+    </div>
+    <input type="file" id="fileImport" accept="application/json" class="hidden">
+  </header>
+
+  <main class="wrap">
+    <div id="bannerLocal" class="banner hidden">
+      <b>Modo prueba:</b> no hay configuración de Firebase, así que los datos solo se guardan en este navegador.
+      Pega tu configuración de <i>mis-cosas</i> al principio del <code>&lt;script&gt;</code> para que se sincronice entre móvil y PC.
+    </div>
+
+    <!-- Captura rápida -->
+    <section class="rapida">
+      <div class="fila">
+        <input id="qNombre" list="dlPersonas" placeholder="¿De quién?" autocomplete="off">
+        <select id="qTipo"></select>
+      </div>
+      <textarea id="qTexto" rows="2" placeholder="¿Qué te ha contado? ¿Qué ha pasado?"></textarea>
+      <div class="acciones"><button class="btn" id="qGuardar">Guardar</button></div>
+      <datalist id="dlPersonas"></datalist>
+    </section>
+
+    <!-- PERSONAS -->
+    <section id="tab-personas">
+      <div class="toolbar">
+        <input id="pBuscar" type="search" placeholder="Buscar en nombres, etiquetas y notas…">
+        <select id="pOrden" aria-label="Ordenar">
+          <option value="reciente">Recientes</option>
+          <option value="olvido">Hace más que no apunto</option>
+          <option value="cerca">Más cercanos</option>
+          <option value="az">A–Z</option>
+        </select>
+      </div>
+      <div style="margin:-4px 0 12px"><button class="btn sec" id="pNueva">+ Persona</button></div>
+      <div id="pLista"></div>
+    </section>
+
+    <!-- CÍRCULOS -->
+    <section id="tab-circulos" class="hidden">
+      <div class="seg" id="cVista">
+        <button data-v="tiempo" class="on">Tiempo juntos</button>
+        <button data-v="intimidad">Intimidad</button>
+        <button data-v="mapa">Mapa</button>
+      </div>
+      <div class="lienzo"><svg id="cSvg" viewBox="-310 -310 620 620" role="img"></svg></div>
+      <div class="leyenda" id="cLeyenda"></div>
+      <div class="sin-colocar" id="cSin"></div>
+    </section>
+
+    <!-- APUNTES -->
+    <section id="tab-apuntes" class="hidden">
+      <div class="filtros" id="aFiltros"></div>
+      <div id="aLista"></div>
+    </section>
+  </main>
+</div>
+
+<!-- ============ FICHA ============ -->
+<dialog id="ficha">
+  <div class="ficha-head">
+    <input id="fNombre" placeholder="Nombre">
+    <button class="cerrar" id="fCerrar" aria-label="Cerrar">✕</button>
+  </div>
+  <div class="ficha-body">
+    <div class="nivel"><div class="t">Tiempo que pasamos juntos</div><div class="seg" id="fTiempo"></div></div>
+    <div class="nivel"><div class="t">Intimidad</div><div class="seg" id="fIntimidad"></div></div>
+
+    <label>Lo que le importa
+      <textarea id="fImportante" rows="3" placeholder="Su gente, sus proyectos, lo que le ilusiona o le preocupa…"></textarea>
+    </label>
+    <div class="dos">
+      <label>De qué la conozco<input id="fConocer" placeholder="Impro, la uni, amiga de…"></label>
+      <label>Cumpleaños<input id="fCumple" placeholder="12 de marzo"></label>
+    </div>
+    <label>Fechas y cosas a recordar
+      <textarea id="fFechas" rows="2" placeholder="Examen en enero, se muda en verano, su perro se llama…"></textarea>
+    </label>
+    <label>Etiquetas<input id="fEtiquetas" placeholder="música, Murcia, Eskilsuá"></label>
+
+    <h3>Notas</h3>
+    <div class="add">
+      <textarea id="fNuevaNota" rows="2" placeholder="Nueva nota…"></textarea>
+      <button class="btn" id="fAddNota">Añadir</button>
+    </div>
+    <div id="fNotas"></div>
+
+    <h3>Para la próxima vez</h3>
+    <div class="add">
+      <select id="fApTipo"></select>
+      <input id="fApTexto" placeholder="Pregunta, cumplido, plan…">
+      <button class="btn" id="fAddAp">+</button>
+    </div>
+    <div id="fApuntes" style="margin-top:10px"></div>
+
+    <div class="zona-peligro"><button class="btn peligro" id="fBorrar">Borrar persona</button></div>
+  </div>
+</dialog>
+
+<div id="toast" class="toast hidden"></div>
+
+<script type="module">
+/* =====================================================================
+   CONFIGURACIÓN
+   Pega aquí el mismo firebaseConfig que usa la percu (proyecto mis-cosas).
+   Mientras esté vacío, la página funciona en "modo prueba" (solo este navegador).
+   ===================================================================== */
+const FIREBASE_CONFIG = {
+  apiKey: "",
+  authDomain: "",
+  projectId: "",
+  storageBucket: "",
+  messagingSenderId: "",
+  appId: ""
+};
+const FIREBASE_VERSION = "10.12.2";
+const AVISO_DIAS = 60;   // aviso si alguien cercano lleva más de esto sin notas
+
+/* ===================== Escalas y tipos ===================== */
+const ESCALAS = {
+  tiempo: {
+    titulo: "Tiempo juntos",
+    corto: ["Semanal", "Quincenal", "Mensual", "A veces", "Casi nunca"],
+    largo: ["A diario o cada semana", "Cada pocas semanas", "Cada mes o dos", "Pocas veces al año", "Casi nunca"]
+  },
+  intimidad: {
+    titulo: "Intimidad",
+    corto: ["Íntima", "Confianza", "Amistad", "Cordial", "Superficial"],
+    largo: ["Íntima", "Mucha confianza", "Amistad", "Cordial", "Superficial / gente interesante"]
+  }
+};
+const TIPOS = {
+  pregunta: { icono: "❓", nombre: "Pregunta", plural: "Preguntas" },
+  cumplido: { icono: "✨", nombre: "Cumplido", plural: "Cumplidos" },
+  plan:     { icono: "🗓️", nombre: "Plan", plural: "Planes" },
+  regalo:   { icono: "🎁", nombre: "Regalo", plural: "Regalos" },
+  otro:     { icono: "📌", nombre: "Otro", plural: "Otros" }
+};
+const COLORES = ["#8e3a1f", "#b5532f", "#d08a5c", "#dcb98f", "#cfc6b6"]; // nivel 1..5
+
+/* ===================== Utilidades ===================== */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const nuevoId = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+const norm = s => String(s ?? "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+const recorta = (s, n) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
+function hash(s) { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967295; }
+function diasDesde(ts) { return Math.floor((Date.now() - ts) / 86400000); }
+function textoHace(ts) {
+  const d = diasDesde(ts);
+  if (d <= 0) return "hoy";
+  if (d === 1) return "ayer";
+  if (d < 14) return `hace ${d} días`;
+  if (d < 60) return `hace ${Math.round(d / 7)} semanas`;
+  if (d < 365) return `hace ${Math.round(d / 30)} meses`;
+  const a = Math.round(d / 365); return `hace ${a} año${a > 1 ? "s" : ""}`;
+}
+const fmtFecha = ts => new Date(ts).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" });
+function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+
+let toastTimer;
+function toast(msg, accion, textoAccion = "Abrir") {
+  const t = $("#toast");
+  t.innerHTML = `<span>${esc(msg)}</span>` + (accion ? `<button>${esc(textoAccion)}</button>` : "");
+  if (accion) t.querySelector("button").onclick = () => { t.classList.add("hidden"); accion(); };
+  t.classList.remove("hidden");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.add("hidden"), 4000);
+}
+
+/* ===================== Datos ===================== */
+const datos = { personas: new Map(), apuntes: new Map() };
+let backend = null;
+
+function backendLocal() {
+  const clave = c => `social:${c}`;
+  const persistir = c => localStorage.setItem(clave(c), JSON.stringify([...datos[c].values()]));
+  let onChange = () => {};
+  return {
+    nombre: "este navegador (modo prueba)",
+    start(cb) {
+      onChange = cb;
+      for (const c of Object.keys(datos)) {
+        try { (JSON.parse(localStorage.getItem(clave(c))) || []).forEach(o => datos[c].set(o.id, o)); } catch {}
+      }
+      cb();
+    },
+    save(c, obj) { datos[c].set(obj.id, obj); persistir(c); onChange(); },
+    remove(c, id) { datos[c].delete(id); persistir(c); onChange(); },
+    stop() {}
+  };
+}
+
+function backendFirebase(fs, db, user) {
+  const unsubs = [];
+  return {
+    nombre: `Firebase · ${user.email}`,
+    start(cb) {
+      for (const c of Object.keys(datos)) {
+        unsubs.push(fs.onSnapshot(fs.collection(db, "users", user.uid, c), snap => {
+          datos[c].clear();
+          snap.forEach(d => datos[c].set(d.id, { ...d.data(), id: d.id }));
+          cb();
+        }, err => { console.error(err); toast("Error leyendo datos: " + err.code); }));
+      }
+    },
+    save(c, obj) {
+      const { id, ...resto } = obj;
+      // Con la caché offline, onSnapshot refleja el cambio al instante; no esperamos al servidor.
+      fs.setDoc(fs.doc(db, "users", user.uid, c, id), JSON.parse(JSON.stringify(resto)))
+        .catch(e => { console.error(e); toast("No se pudo guardar: " + e.code); });
+    },
+    remove(c, id) {
+      fs.deleteDoc(fs.doc(db, "users", user.uid, c, id)).catch(e => { console.error(e); toast("No se pudo borrar: " + e.code); });
+    },
+    stop() { unsubs.forEach(u => u()); unsubs.length = 0; }
+  };
+}
+
+const guardar = (c, obj) => backend.save(c, obj);
+const borrar = (c, id) => backend.remove(c, id);
+
+/* --- helpers de personas --- */
+function nuevaPersona(nombre) {
+  const ahora = Date.now();
+  return { id: nuevoId(), nombre: nombre.trim(), conocer: "", importante: "", fechas: "", cumple: "",
+           etiquetas: [], tiempo: null, intimidad: null, notas: [], creado: ahora, actualizado: ahora };
+}
+const personas = () => [...datos.personas.values()];
+const apuntes = () => [...datos.apuntes.values()];
+function buscarPorNombre(n) { const k = norm(n); return personas().find(p => norm(p.nombre) === k) || null; }
+function ultimaNota(p) { return (p.notas || []).reduce((m, n) => (!m || n.ts > m.ts ? n : m), null); }
+function apuntesDe(id) { return apuntes().filter(a => a.personaId === id); }
+function esCercana(p) { return (p.tiempo && p.tiempo <= 2) || (p.intimidad && p.intimidad <= 2); }
+function cercania(p) { return Math.min(p.tiempo || 9, p.intimidad || 9); }
+
+/* ===================== Render: general ===================== */
+function renderTodo() {
+  // datalist para "¿De quién?"
+  $("#dlPersonas").innerHTML = personas().sort((a, b) => a.nombre.localeCompare(b.nombre, "es"))
+    .map(p => `<option value="${esc(p.nombre)}">`).join("");
+  renderPersonas();
+  renderCirculos();
+  renderApuntes();
+  if ($("#ficha").open) renderFichaDinamica();
+}
+
+/* ===================== Captura rápida ===================== */
+$("#qTipo").innerHTML = `<option value="nota">📝 Nota</option>` +
+  Object.entries(TIPOS).map(([k, t]) => `<option value="${k}">${t.icono} ${t.nombre}</option>`).join("");
+$("#qTipo").addEventListener("change", () => {
+  $("#qTexto").placeholder = $("#qTipo").value === "nota"
+    ? "¿Qué te ha contado? ¿Qué ha pasado?"
+    : "Escríbelo… (sin nombre = para quien sea)";
+});
+
+function guardarRapido() {
+  const nombre = $("#qNombre").value.trim();
+  const texto = $("#qTexto").value.trim();
+  const tipo = $("#qTipo").value;
+  if (!texto) return toast("Escribe algo primero");
+  let p = nombre ? buscarPorNombre(nombre) : null;
+  let nueva = false;
+  if (nombre && !p) { p = nuevaPersona(nombre); nueva = true; }
+
+  if (tipo === "nota") {
+    if (!p) return toast("¿De quién es la nota?");
+    p = { ...p, notas: [...(p.notas || []), { id: nuevoId(), ts: Date.now(), texto }], actualizado: Date.now() };
+    guardar("personas", p);
+    const id = p.id;
+    toast(nueva ? `Nueva persona: ${p.nombre}` : `Nota guardada · ${p.nombre}`, () => abrirFicha(id));
+  } else {
+    if (nueva) guardar("personas", p);
+    guardar("apuntes", { id: nuevoId(), tipo, texto, personaId: p ? p.id : null, hecho: false, creado: Date.now() });
+    toast(`Guardado: ${TIPOS[tipo].nombre.toLowerCase()}${p ? " para " + p.nombre : " para quien sea"}`);
+  }
+  $("#qTexto").value = "";
+}
+$("#qGuardar").addEventListener("click", guardarRapido);
+$("#qTexto").addEventListener("keydown", e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) guardarRapido(); });
+
+/* ===================== Pestañas ===================== */
+$$("nav button").forEach(b => b.addEventListener("click", () => {
+  $$("nav button").forEach(x => x.classList.toggle("on", x === b));
+  for (const t of ["personas", "circulos", "apuntes"]) $("#tab-" + t).classList.toggle("hidden", t !== b.dataset.tab);
+  if (b.dataset.tab === "circulos") renderCirculos();
+  try { localStorage.setItem("social:tab", b.dataset.tab); } catch {}
+}));
+
+/* ===================== Personas ===================== */
+function textoBuscable(p) {
+  return norm([p.nombre, p.conocer, p.importante, p.fechas, p.cumple, (p.etiquetas || []).join(" "),
+    ...(p.notas || []).map(n => n.texto)].join(" "));
+}
+function chipsNivel(p) {
+  let h = "";
+  if (p.tiempo) h += `<span class="chip t" title="${ESCALAS.tiempo.largo[p.tiempo - 1]}">⏱ ${ESCALAS.tiempo.corto[p.tiempo - 1]}</span>`;
+  if (p.intimidad) h += `<span class="chip i" title="${ESCALAS.intimidad.largo[p.intimidad - 1]}">♥ ${ESCALAS.intimidad.corto[p.intimidad - 1]}</span>`;
+  (p.etiquetas || []).slice(0, 3).forEach(e => h += `<span class="chip">${esc(e)}</span>`);
+  return h;
+}
+function renderPersonas() {
+  const q = norm($("#pBuscar").value);
+  const orden = $("#pOrden").value;
+  let lista = personas();
+  if (q) lista = lista.filter(p => textoBuscable(p).includes(q));
+  const ultTs = p => (ultimaNota(p)?.ts ?? 0);
+  const sorters = {
+    reciente: (a, b) => Math.max(ultTs(b), b.actualizado || 0) - Math.max(ultTs(a), a.actualizado || 0),
+    olvido:   (a, b) => (ultTs(a) || a.creado) - (ultTs(b) || b.creado),
+    cerca:    (a, b) => cercania(a) - cercania(b) || a.nombre.localeCompare(b.nombre, "es"),
+    az:       (a, b) => a.nombre.localeCompare(b.nombre, "es")
+  };
+  lista.sort(sorters[orden]);
+
+  if (!lista.length) {
+    $("#pLista").innerHTML = `<div class="vacio">${q ? "Nadie coincide con la búsqueda." :
+      "Aún no hay nadie.<br>Escribe un nombre y una nota arriba, o pulsa «+ Persona»."}</div>`;
+    return;
+  }
+  $("#pLista").innerHTML = lista.map(p => {
+    const u = ultimaNota(p);
+    const ref = u ? u.ts : p.creado;
+    const pend = apuntesDe(p.id).filter(a => !a.hecho).length;
+    const aviso = esCercana(p) && diasDesde(ref) > AVISO_DIAS;
+    const pie = [
+      u ? `última nota ${textoHace(u.ts)}` : "",
+      pend ? `${pend} pendiente${pend > 1 ? "s" : ""}` : "",
+      aviso ? `<span class="aviso">hace tiempo que no apuntas nada</span>` : ""
+    ].filter(Boolean).join(" · ");
+    return `<button class="card" data-open="${p.id}">
+      <div class="card-top"><span class="nombre">${esc(p.nombre)}</span>${chipsNivel(p)}</div>
+      <div class="card-nota">${u ? esc(recorta(u.texto, 120)) : `<i class="muted">${p.importante ? esc(recorta(p.importante, 120)) : "Sin notas todavía"}</i>`}</div>
+      ${pie ? `<div class="card-pie">${pie}</div>` : ""}
+    </button>`;
+  }).join("");
+}
+$("#pBuscar").addEventListener("input", renderPersonas);
+$("#pOrden").addEventListener("change", () => { renderPersonas(); try { localStorage.setItem("social:orden", $("#pOrden").value); } catch {} });
+$("#pNueva").addEventListener("click", () => {
+  const nombre = (prompt("Nombre de la persona:") || "").trim();
+  if (!nombre) return;
+  const existe = buscarPorNombre(nombre);
+  if (existe) return abrirFicha(existe.id);
+  const p = nuevaPersona(nombre);
+  guardar("personas", p);
+  abrirFicha(p.id);
+});
+
+/* ===================== Círculos ===================== */
+let vistaCirculos = "tiempo";
+$$("#cVista button").forEach(b => b.addEventListener("click", () => {
+  vistaCirculos = b.dataset.v;
+  $$("#cVista button").forEach(x => x.classList.toggle("on", x === b));
+  renderCirculos();
+}));
+
+function escalaSvg(svg, ancho) {
+  const px = svg.clientWidth || ancho;
+  svg.style.setProperty("--fs", (12 * Math.max(1, ancho / px)).toFixed(1) + "px");
+  return Math.max(1, ancho / px);
+}
+window.addEventListener("resize", debounce(() => renderCirculos(), 200));
+function renderCirculos() {
+  const svg = $("#cSvg");
+  if (svg.closest(".hidden")) return;
+  const todas = personas();
+  if (vistaCirculos === "mapa") return renderMapa(svg, todas);
+
+  const eje = vistaCirculos, otro = eje === "tiempo" ? "intimidad" : "tiempo";
+  const R0 = 40, W = 52;
+  svg.setAttribute("viewBox", "-305 -305 610 610");
+  const k = escalaSvg(svg, 610), rd = (6 * k).toFixed(1);
+  let h = "";
+  const opac = [0.24, 0.17, 0.11, 0.07, 0.035];
+  for (let k = 5; k >= 1; k--) h += `<circle r="${R0 + k * W}" fill="rgba(181,83,47,${opac[k - 1]})" stroke="#e6d6c0" stroke-width="1"/>`;
+  h += `<circle r="${R0}" fill="#b5532f"/><text y="${(5 * k).toFixed(1)}" text-anchor="middle" style="font:700 calc(var(--fs) * 1.2) var(--sans);fill:#fff">Yo</text>`;
+  for (let k = 1; k <= 5; k++) h += `<text class="ring-label" y="${-(R0 + k * W) + 15}">${ESCALAS[eje].corto[k - 1]}</text>`;
+
+  for (let k = 1; k <= 5; k++) {
+    const grupo = todas.filter(p => p[eje] === k).sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+    const n = grupo.length; if (!n) continue;
+    const off = hash("anillo" + k) * Math.PI * 2;
+    const mid = R0 + (k - 0.5) * W;
+    grupo.forEach((p, i) => {
+      const ang = off + (i * 2 * Math.PI) / n;
+      const r = mid + (n > 10 ? (i % 2 ? 9 : -9) : 0);
+      const x = Math.cos(ang) * r, y = Math.sin(ang) * r;
+      const der = Math.cos(ang) >= 0;
+      const color = p[otro] ? COLORES[p[otro] - 1] : "#fff";
+      h += `<g class="dot" data-open="${p.id}"><title>${esc(p.nombre)}</title>
+        <circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${rd}" fill="${color}" stroke="#7a6f60" stroke-width="1"/>
+        <text class="dot-label" x="${(x + (der ? 1 : -1) * (6 * k + 4)).toFixed(1)}" y="${(y + 4 * k).toFixed(1)}" text-anchor="${der ? "start" : "end"}">${esc(recorta(p.nombre, 16))}</text></g>`;
+    });
+  }
+  svg.innerHTML = h;
+
+  $("#cLeyenda").innerHTML = `<span>Color = ${ESCALAS[otro].titulo.toLowerCase()}:</span>` +
+    ESCALAS[otro].corto.map((t, i) => `<span><i style="background:${COLORES[i]}"></i>${t}</span>`).join("") +
+    `<span><i style="background:#fff;border:1px solid #7a6f60"></i>Sin definir</span>`;
+  pintarSinColocar(todas.filter(p => !p[eje]), `sin «${ESCALAS[eje].titulo.toLowerCase()}»`);
+}
+
+function renderMapa(svg, todas) {
+  const P = 60, S = 480; // padding y tamaño útil
+  svg.setAttribute("viewBox", "0 0 600 600");
+  const k = escalaSvg(svg, 600), rd = (6 * k).toFixed(1);
+  const M = 40;                            // margen interior para que los puntos no se salgan
+  const X = v => P + M + ((5 - v) / 4) * (S - 2 * M);   // tiempo: 1 (semanal) a la derecha
+  const Y = v => P + M + ((v - 1) / 4) * (S - 2 * M);   // intimidad: 1 (íntima) arriba
+  const lim = z => Math.min(P + S + 5, Math.max(P - 5, z));
+  let h = `<rect x="${P - 20}" y="${P - 20}" width="${S + 40}" height="${S + 40}" rx="14" fill="#fffbf3" stroke="#e3d9c6"/>`;
+  h += `<line x1="300" y1="${P - 20}" x2="300" y2="${P + S + 20}" stroke="#eadfcc" stroke-dasharray="4 5"/>`;
+  h += `<line x1="${P - 20}" y1="300" x2="${P + S + 20}" y2="300" stroke="#eadfcc" stroke-dasharray="4 5"/>`;
+  h += `<text class="quad" x="${P + S}" y="${P + 4}" text-anchor="end">tu gente</text>`;
+  h += `<text class="quad" x="${P}" y="${P + 4}">íntimos que ves poco</text>`;
+  h += `<text class="quad" x="${P + S}" y="${P + S + 4}" text-anchor="end">mucho roce, poca confianza</text>`;
+  h += `<text class="quad" x="${P}" y="${P + S + 4}">lejos</text>`;
+  h += `<text class="axis" x="300" y="${P + S + 45}" text-anchor="middle">← menos tiempo · · · más tiempo juntos →</text>`;
+  h += `<text class="axis" transform="translate(22 300) rotate(-90)" text-anchor="middle">← menos · · · más intimidad →</text>`;
+
+  const colocadas = todas.filter(p => p.tiempo && p.intimidad);
+  colocadas.forEach(p => {
+    const jx = (hash(p.id + "x") - 0.5) * 60, jy = (hash(p.id + "y") - 0.5) * 60;
+    const x = lim(X(p.tiempo) + jx), y = lim(Y(p.intimidad) + jy);
+    const der = x < 380;
+    h += `<g class="dot" data-open="${p.id}"><title>${esc(p.nombre)}</title>
+      <circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${rd}" fill="${COLORES[Math.min(p.tiempo, p.intimidad) - 1]}" stroke="#7a6f60" stroke-width="1"/>
+      <text class="dot-label" x="${(x + (der ? 1 : -1) * (6 * k + 4)).toFixed(1)}" y="${(y + 4 * k).toFixed(1)}" text-anchor="${der ? "start" : "end"}">${esc(recorta(p.nombre, 16))}</text></g>`;
+  });
+  svg.innerHTML = h;
+  $("#cLeyenda").innerHTML = `<span>Cada punto cruza el tiempo que pasáis juntos con la intimidad.</span>`;
+  pintarSinColocar(todas.filter(p => !(p.tiempo && p.intimidad)), "sin los dos niveles");
+}
+
+function pintarSinColocar(lista, que) {
+  $("#cSin").innerHTML = lista.length
+    ? `<span class="muted">${lista.length} ${lista.length === 1 ? "persona" : "personas"} ${que}:</span> ` +
+      lista.sort((a, b) => a.nombre.localeCompare(b.nombre, "es")).map(p => `<button class="link" data-open="${p.id}">${esc(p.nombre)}</button>`).join(", ")
+    : "";
+}
+
+/* ===================== Apuntes ===================== */
+let filtroAp = "todos", verHechos = false;
+function renderFiltros() {
+  const cont = { todos: apuntes().filter(a => verHechos || !a.hecho).length };
+  for (const k in TIPOS) cont[k] = apuntes().filter(a => a.tipo === k && (verHechos || !a.hecho)).length;
+  $("#aFiltros").innerHTML =
+    `<button data-f="todos" class="${filtroAp === "todos" ? "on" : ""}">Todos · ${cont.todos}</button>` +
+    Object.entries(TIPOS).map(([k, t]) => `<button data-f="${k}" class="${filtroAp === k ? "on" : ""}">${t.icono} ${t.plural} · ${cont[k]}</button>`).join("") +
+    `<label><input type="checkbox" id="aHechos" ${verHechos ? "checked" : ""}> ver hechos</label>`;
+}
+function filaApunte(a, conPersona = true) {
+  const p = a.personaId ? datos.personas.get(a.personaId) : null;
+  const t = TIPOS[a.tipo] || TIPOS.otro;
+  return `<div class="ap ${a.hecho ? "hecho" : ""}">
+    <input type="checkbox" data-ap-check="${a.id}" ${a.hecho ? "checked" : ""} aria-label="Hecho">
+    <div style="flex:1">
+      <div class="ap-txt">${t.icono} ${esc(a.texto)}</div>
+      <div class="ap-meta">${conPersona ? (p ? `para <button class="link" data-open="${p.id}">${esc(p.nombre)}</button>` : "para quien sea") + " · " : ""}${fmtFecha(a.creado)}</div>
+    </div>
+    <button class="x" data-ap-del="${a.id}" aria-label="Borrar">🗑</button>
+  </div>`;
+}
+function renderApuntes() {
+  renderFiltros();
+  let lista = apuntes().filter(a => (filtroAp === "todos" || a.tipo === filtroAp) && (verHechos || !a.hecho));
+  lista.sort((a, b) => (a.hecho - b.hecho) || b.creado - a.creado);
+  $("#aLista").innerHTML = lista.length ? lista.map(a => filaApunte(a)).join("")
+    : `<div class="vacio">Nada por aquí.<br>Elige «❓ Pregunta», «✨ Cumplido»… en la caja de arriba.<br>Sin nombre, queda «para quien sea».</div>`;
+}
+$("#aFiltros").addEventListener("click", e => {
+  const b = e.target.closest("[data-f]"); if (!b) return;
+  filtroAp = b.dataset.f; renderApuntes();
+});
+$("#aFiltros").addEventListener("change", e => { if (e.target.id === "aHechos") { verHechos = e.target.checked; renderApuntes(); } });
+
+/* ===================== Delegación de clicks ===================== */
+document.addEventListener("click", e => {
+  const ab = e.target.closest("[data-open]");
+  if (ab) { e.preventDefault(); abrirFicha(ab.dataset.open); return; }
+  const del = e.target.closest("[data-ap-del]");
+  if (del) { if (confirm("¿Borrar este apunte?")) borrar("apuntes", del.dataset.apDel); return; }
+});
+document.addEventListener("change", e => {
+  const c = e.target.closest("[data-ap-check]");
+  if (c) { const a = datos.apuntes.get(c.dataset.apCheck); if (a) guardar("apuntes", { ...a, hecho: c.checked, hechoEn: c.checked ? Date.now() : null }); }
+});
+
+/* ===================== Ficha ===================== */
+let fichaId = null;
+const ficha = $("#ficha");
+$("#fApTipo").innerHTML = Object.entries(TIPOS).map(([k, t]) => `<option value="${k}">${t.icono}</option>`).join("");
+
+function personaConFormulario(id = fichaId) {
+  const p = datos.personas.get(id); if (!p) return null;
+  return {
+    ...p,
+    nombre: $("#fNombre").value.trim() || p.nombre,
+    importante: $("#fImportante").value,
+    conocer: $("#fConocer").value,
+    cumple: $("#fCumple").value,
+    fechas: $("#fFechas").value,
+    etiquetas: $("#fEtiquetas").value.split(",").map(s => s.trim()).filter(Boolean),
+    actualizado: Date.now()
+  };
+}
+function hayCambios(a, b) {
+  return ["nombre", "importante", "conocer", "cumple", "fechas"].some(k => (a[k] || "") !== (b[k] || "")) ||
+    (a.etiquetas || []).join("|") !== (b.etiquetas || []).join("|");
+}
+function guardarCamposFicha(id) {
+  if (!id || id !== fichaId) return;
+  const orig = datos.personas.get(id), p = personaConFormulario(id);
+  if (orig && p && hayCambios(orig, p)) guardar("personas", p);
+}
+const guardarFicha = debounce(guardarCamposFicha, 600);
+["#fNombre", "#fImportante", "#fConocer", "#fCumple", "#fFechas", "#fEtiquetas"].forEach(s => $(s).addEventListener("input", () => guardarFicha(fichaId)));
+
+function pintarSeg(cont, eje, valor) {
+  $(cont).innerHTML = ESCALAS[eje].corto.map((t, i) =>
+    `<button data-n="${i + 1}" class="${valor === i + 1 ? "on" : ""}" title="${ESCALAS[eje].largo[i]}">${t}</button>`).join("") +
+    `<button data-n="0" class="${!valor ? "on" : ""}" title="Sin definir">—</button>`;
+}
+for (const [cont, eje] of [["#fTiempo", "tiempo"], ["#fIntimidad", "intimidad"]]) {
+  $(cont).addEventListener("click", e => {
+    const b = e.target.closest("[data-n]"); if (!b) return;
+    const p = personaConFormulario(); if (!p) return;
+    p[eje] = +b.dataset.n || null;
+    pintarSeg(cont, eje, p[eje]);
+    guardar("personas", p);
+  });
+}
+
+function abrirFicha(id) {
+  const p = datos.personas.get(id); if (!p) return;
+  if (fichaId && fichaId !== id) guardarCamposFicha(fichaId);
+  fichaId = id;
+  $("#fNombre").value = p.nombre || "";
+  $("#fImportante").value = p.importante || "";
+  $("#fConocer").value = p.conocer || "";
+  $("#fCumple").value = p.cumple || "";
+  $("#fFechas").value = p.fechas || "";
+  $("#fEtiquetas").value = (p.etiquetas || []).join(", ");
+  $("#fNuevaNota").value = ""; $("#fApTexto").value = "";
+  pintarSeg("#fTiempo", "tiempo", p.tiempo);
+  pintarSeg("#fIntimidad", "intimidad", p.intimidad);
+  renderFichaDinamica();
+  if (!ficha.open) ficha.showModal();
+  ficha.scrollTop = 0;
+}
+function cerrarFicha() { guardarCamposFicha(fichaId); ficha.close(); }
+$("#fCerrar").addEventListener("click", cerrarFicha);
+ficha.addEventListener("cancel", e => { e.preventDefault(); cerrarFicha(); });
+ficha.addEventListener("close", () => { fichaId = null; });
+
+let notaEditando = null;
+function renderFichaDinamica() {
+  const p = datos.personas.get(fichaId);
+  if (!p) { ficha.close(); return; }
+  const notas = [...(p.notas || [])].sort((a, b) => b.ts - a.ts);
+  $("#fNotas").innerHTML = notas.length ? notas.map(n => notaEditando === n.id
+    ? `<div class="nota"><textarea id="fEditTxt" rows="3">${esc(n.texto)}</textarea>
+         <div style="display:flex;gap:8px;margin-top:6px"><button class="btn" data-nota-ok="${n.id}">Guardar</button><button class="btn sec" data-nota-cancel>Cancelar</button></div></div>`
+    : `<div class="nota"><div class="nota-fecha">${fmtFecha(n.ts)} · ${textoHace(n.ts)}
+         <button data-nota-edit="${n.id}">editar</button><button data-nota-del="${n.id}">borrar</button></div>
+         <div class="nota-txt">${esc(n.texto)}</div></div>`).join("")
+    : `<div class="muted" style="margin-top:8px">Sin notas todavía.</div>`;
+
+  const aps = apuntesDe(p.id).sort((a, b) => (a.hecho - b.hecho) || b.creado - a.creado);
+  $("#fApuntes").innerHTML = aps.length ? aps.map(a => filaApunte(a, false)).join("")
+    : `<div class="muted">Preguntas que hacerle, cumplidos, planes, ideas de regalo…</div>`;
+}
+
+$("#fAddNota").addEventListener("click", () => {
+  const texto = $("#fNuevaNota").value.trim(); if (!texto) return;
+  const p = personaConFormulario(); if (!p) return;
+  p.notas = [...(p.notas || []), { id: nuevoId(), ts: Date.now(), texto }];
+  guardar("personas", p);
+  $("#fNuevaNota").value = "";
+});
+$("#fAddAp").addEventListener("click", () => {
+  const texto = $("#fApTexto").value.trim(); if (!texto) return;
+  guardar("apuntes", { id: nuevoId(), tipo: $("#fApTipo").value, texto, personaId: fichaId, hecho: false, creado: Date.now() });
+  $("#fApTexto").value = "";
+});
+$("#fApTexto").addEventListener("keydown", e => { if (e.key === "Enter") $("#fAddAp").click(); });
+
+$("#fNotas").addEventListener("click", e => {
+  const t = e.target;
+  if (t.dataset.notaEdit) { notaEditando = t.dataset.notaEdit; renderFichaDinamica(); $("#fEditTxt")?.focus(); }
+  else if ("notaCancel" in t.dataset) { notaEditando = null; renderFichaDinamica(); }
+  else if (t.dataset.notaOk) {
+    const p = personaConFormulario(); const txt = $("#fEditTxt").value.trim();
+    p.notas = p.notas.map(n => n.id === t.dataset.notaOk ? { ...n, texto: txt, editada: Date.now() } : n).filter(n => n.texto);
+    notaEditando = null; guardar("personas", p);
+  }
+  else if (t.dataset.notaDel) {
+    if (!confirm("¿Borrar esta nota?")) return;
+    const p = personaConFormulario(); p.notas = p.notas.filter(n => n.id !== t.dataset.notaDel); guardar("personas", p);
+  }
+});
+
+$("#fBorrar").addEventListener("click", () => {
+  const p = datos.personas.get(fichaId); if (!p) return;
+  if (!confirm(`¿Borrar a ${p.nombre} con todas sus notas? Sus apuntes quedarán «para quien sea».`)) return;
+  apuntesDe(p.id).forEach(a => guardar("apuntes", { ...a, personaId: null }));
+  const id = p.id; ficha.close(); borrar("personas", id);
+});
+
+/* ===================== Menú: exportar / importar / salir ===================== */
+$("#menuBtn").addEventListener("click", e => { e.stopPropagation(); $("#menu").classList.toggle("hidden"); });
+document.addEventListener("click", e => { if (!e.target.closest("#menu")) $("#menu").classList.add("hidden"); });
+
+$("#mExportar").addEventListener("click", () => {
+  const json = JSON.stringify({ exportado: new Date().toISOString(), personas: personas(), apuntes: apuntes() }, null, 2);
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([json], { type: "application/json" }));
+  a.download = `social-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click(); URL.revokeObjectURL(a.href);
+});
+$("#mImportar").addEventListener("click", () => $("#fileImport").click());
+$("#fileImport").addEventListener("change", async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    const d = JSON.parse(await f.text());
+    const np = (d.personas || []).length, na = (d.apuntes || []).length;
+    if (!confirm(`Importar ${np} personas y ${na} apuntes? Las que tengan el mismo id se sobrescriben.`)) return;
+    (d.personas || []).forEach(p => p.id && guardar("personas", p));
+    (d.apuntes || []).forEach(a => a.id && guardar("apuntes", a));
+    toast("Copia importada");
+  } catch (err) { toast("Ese archivo no es una copia válida"); }
+  e.target.value = "";
+});
+
+/* ===================== Arranque ===================== */
+function mostrarApp() {
+  $("#vLogin").classList.add("hidden");
+  $("#vApp").classList.remove("hidden");
+  $("#mInfo").textContent = "Guardando en: " + backend.nombre;
+  try {
+    const tab = localStorage.getItem("social:tab"); if (tab) $(`nav button[data-tab="${tab}"]`)?.click();
+    const orden = localStorage.getItem("social:orden"); if (orden) $("#pOrden").value = orden;
+  } catch {}
+  backend.start(renderTodo);
+}
+
+const MODO_LOCAL = !FIREBASE_CONFIG.apiKey;
+
+if (MODO_LOCAL) {
+  backend = backendLocal();
+  $("#bannerLocal").classList.remove("hidden");
+  $("#mSalir").classList.add("hidden");
+  mostrarApp();
+} else {
+  const base = `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}`;
+  const [{ initializeApp }, authMod, fs] = await Promise.all([
+    import(`${base}/firebase-app.js`), import(`${base}/firebase-auth.js`), import(`${base}/firebase-firestore.js`)
+  ]);
+  const app = initializeApp(FIREBASE_CONFIG);
+  const auth = authMod.getAuth(app);
+  let db;
+  try {
+    // Caché en el dispositivo: puedes escribir sin cobertura y se sincroniza al volver la conexión.
+    db = fs.initializeFirestore(app, { localCache: fs.persistentLocalCache({ tabManager: fs.persistentMultipleTabManager() }) });
+  } catch (e) { console.warn("Sin caché offline:", e); db = fs.getFirestore(app); }
+
+  authMod.onAuthStateChanged(auth, user => {
+    if (backend) { backend.stop(); backend = null; datos.personas.clear(); datos.apuntes.clear(); }
+    if (user) { backend = backendFirebase(fs, db, user); mostrarApp(); }
+    else { $("#vApp").classList.add("hidden"); $("#vLogin").classList.remove("hidden"); }
+  });
+
+  $("#loginForm").addEventListener("submit", async e => {
+    e.preventDefault(); $("#lError").textContent = "";
+    try { await authMod.signInWithEmailAndPassword(auth, $("#lEmail").value.trim(), $("#lPass").value); }
+    catch (err) { $("#lError").textContent = err.code === "auth/invalid-credential" ? "Correo o contraseña incorrectos" : "No se pudo entrar: " + err.code; }
+  });
+  $("#mSalir").addEventListener("click", () => authMod.signOut(auth));
+}
+</script>
+</body>
+</html>
