@@ -111,7 +111,11 @@ dialog::backdrop{background:rgba(40,30,20,.45)}
 @media (max-width:480px){.dos{grid-template-columns:1fr}}
 .nivel{margin-top:10px}
 .nivel .t{font-size:.8rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
-.nivel .seg button{font-size:.78rem;padding:.4rem .1rem}
+.nivel .seg{flex-wrap:wrap}
+.nivel .seg button{font-size:.78rem;padding:.4rem .45rem;flex:1 0 auto}
+.seg.sub{background:none;padding:0;gap:6px;margin:0 0 8px}
+.seg.sub button{border:1px solid var(--line);background:var(--card);font-size:.8rem;padding:.3rem .2rem}
+.seg.sub button.on{background:var(--ink);color:#fff;border-color:var(--ink);box-shadow:none}
 h3{font-family:var(--serif);font-size:1.1rem;margin:22px 0 6px;font-weight:600}
 .add{display:flex;gap:8px;align-items:flex-start}
 .add > textarea,.add > input{flex:1}
@@ -256,9 +260,14 @@ details.rapida[open] summary{margin-bottom:8px}
     <!-- CÍRCULOS -->
     <section id="tab-circulos" class="hidden">
       <div class="seg" id="cVista">
-        <button data-v="tiempo" class="on">Tiempo juntos</button>
+        <button data-v="contacto" class="on">Contacto</button>
         <button data-v="intimidad">Intimidad</button>
         <button data-v="mapa">Mapa</button>
+      </div>
+      <div class="seg sub" id="cModo">
+        <button data-m="mix" class="on">Lo más frecuente</button>
+        <button data-m="vemos">👀 En persona</button>
+        <button data-m="hablamos">📞 A distancia</button>
       </div>
       <div class="chips-filtro" id="cRel"></div>
       <div class="lienzo"><svg id="cSvg" viewBox="-310 -310 620 620" role="img"></svg></div>
@@ -301,7 +310,8 @@ details.rapida[open] summary{margin-bottom:8px}
   </div>
   <div class="ficha-body">
     <div class="nivel"><div class="t">Relación</div><div class="rel-sel" id="fRel"></div></div>
-    <div class="nivel"><div class="t">Tiempo que pasamos juntos</div><div class="seg" id="fTiempo"></div></div>
+    <div class="nivel"><div class="t">👀 Nos vemos en persona</div><div class="seg" id="fVemos"></div></div>
+    <div class="nivel"><div class="t">📞 Hablamos (llamadas, audios, mensajes)</div><div class="seg" id="fHablamos"></div></div>
     <div class="nivel"><div class="t">Intimidad</div><div class="seg" id="fIntimidad"></div></div>
 
     <label>Lo que le importa
@@ -365,12 +375,14 @@ const FIREBASE_VERSION = "10.12.2";
 const AVISO_DIAS = 60;   // aviso si alguien cercano lleva más de esto sin notas
 
 /* ===================== Escalas y tipos ===================== */
+const FRECUENCIA = {
+  corto: ["Semanal", "Quincenal", "Mensual", "2-3 meses", "Pocas al año", "Casi nunca"],
+  largo: ["Cada semana o más", "Cada pocas semanas", "Más o menos cada mes", "Cada 2 o 3 meses", "Pocas veces al año", "Casi nunca"]
+};
 const ESCALAS = {
-  tiempo: {
-    titulo: "Tiempo juntos",
-    corto: ["Semanal", "Quincenal", "Mensual", "A veces", "Casi nunca"],
-    largo: ["A diario o cada semana", "Cada pocas semanas", "Cada mes o dos", "Pocas veces al año", "Casi nunca"]
-  },
+  vemos:    { titulo: "Nos vemos", ...FRECUENCIA },
+  hablamos: { titulo: "Hablamos",  ...FRECUENCIA },
+  contacto: { titulo: "Contacto",  ...FRECUENCIA },
   intimidad: {
     titulo: "Intimidad",
     corto: ["Íntima", "Confianza", "Amistad", "Cordial", "Superficial"],
@@ -389,9 +401,9 @@ const COLORES = ["#8e3a1f", "#b5532f", "#d08a5c", "#dcb98f", "#cfc6b6"]; // nive
 // Tipos de relación. Puedes cambiar nombres, quitar o añadir (la clave de la izquierda no la cambies si ya la usas).
 const RELACIONES = {
   familia:     { icono: "👪", nombre: "Familia" },
-  pareja:      { icono: "💞", nombre: "Pareja" },
   profunda:    { icono: "💛", nombre: "Amistad profunda" },
   amistad:     { icono: "🙂", nombre: "Amistad" },
+  atracción:   { icono: "💞", nombre: "Atracción" },
   colega:      { icono: "🤙", nombre: "Colega" },
   trabajo:     { icono: "💼", nombre: "Trabajo" },
   estudios:    { icono: "🎓", nombre: "Estudios" },
@@ -455,7 +467,7 @@ function backendLocal() {
     start(cb) {
       onChange = cb;
       for (const c of Object.keys(datos)) {
-        try { (JSON.parse(localStorage.getItem(clave(c))) || []).forEach(o => datos[c].set(o.id, o)); } catch {}
+        try { (JSON.parse(localStorage.getItem(clave(c))) || []).forEach(o => datos[c].set(o.id, migrar(c, o))); } catch {}
       }
       cb();
     },
@@ -473,7 +485,7 @@ function backendFirebase(fs, db, user) {
       for (const c of Object.keys(datos)) {
         unsubs.push(fs.onSnapshot(fs.collection(db, "users", user.uid, c), snap => {
           datos[c].clear();
-          snap.forEach(d => datos[c].set(d.id, { ...d.data(), id: d.id }));
+          snap.forEach(d => datos[c].set(d.id, migrar(c, { ...d.data(), id: d.id })));
           cb();
         }, err => { console.error(err); toast("Error leyendo datos: " + err.code); }));
       }
@@ -491,6 +503,11 @@ function backendFirebase(fs, db, user) {
   };
 }
 
+function migrar(c, o) {
+  if (c !== "personas" || o.vemos !== undefined || !o.tiempo) return o;
+  const { tiempo, ...resto } = o;
+  return { ...resto, vemos: { 1: 1, 2: 2, 3: 3, 4: 5, 5: 6 }[tiempo] || null };
+}
 const guardar = (c, obj) => backend.save(c, obj);
 const borrar = (c, id) => backend.remove(c, id);
 
@@ -499,15 +516,21 @@ function nuevaPersona(nombre) {
   const ahora = Date.now();
   return { id: nuevoId(), nombre: nombre.trim(), conocer: "", importante: "", fechas: "", cumple: "",
            etiquetas: [], relaciones: [], cumpleDia: null, cumpleMes: null, cumpleAnio: null, eventos: [],
-           tiempo: null, intimidad: null, notas: [], creado: ahora, actualizado: ahora };
+           vemos: null, hablamos: null, intimidad: null, notas: [], creado: ahora, actualizado: ahora };
 }
 const personas = () => [...datos.personas.values()];
 const apuntes = () => [...datos.apuntes.values()];
 function buscarPorNombre(n) { const k = norm(n); return personas().find(p => norm(p.nombre) === k) || null; }
 function ultimaNota(p) { return (p.notas || []).reduce((m, n) => (!m || n.ts > m.ts ? n : m), null); }
 function apuntesDe(id) { return apuntes().filter(a => a.personaId === id); }
-function esCercana(p) { return (p.tiempo && p.tiempo <= 2) || (p.intimidad && p.intimidad <= 2); }
-function cercania(p) { return Math.min(p.tiempo || 9, p.intimidad || 9); }
+function contacto(p, modo = "mix") {   // lo más frecuente entre vernos y hablar
+  if (modo === "vemos") return p.vemos || null;
+  if (modo === "hablamos") return p.hablamos || null;
+  const vs = [p.vemos, p.hablamos].filter(Boolean);
+  return vs.length ? Math.min(...vs) : null;
+}
+function esCercana(p) { const c = contacto(p); return (c && c <= 2) || (p.intimidad && p.intimidad <= 2); }
+function cercania(p) { return Math.min(contacto(p) || 9, p.intimidad || 9); }
 
 /* --- filtro por relación (compartido por Personas, Círculos y Calendario) --- */
 let filtroRel = null;
@@ -640,7 +663,8 @@ function textoBuscable(p) {
 function chipsNivel(p) {
   let h = (p.relaciones || []).filter(k => RELACIONES[k])
     .map(k => `<span class="chip r">${RELACIONES[k].icono} ${RELACIONES[k].nombre}</span>`).join("");
-  if (p.tiempo) h += `<span class="chip t" title="${ESCALAS.tiempo.largo[p.tiempo - 1]}">⏱ ${ESCALAS.tiempo.corto[p.tiempo - 1]}</span>`;
+  if (p.vemos) h += `<span class="chip t" title="Nos vemos: ${FRECUENCIA.largo[p.vemos - 1]}">👀 ${FRECUENCIA.corto[p.vemos - 1]}</span>`;
+  if (p.hablamos) h += `<span class="chip t" title="Hablamos: ${FRECUENCIA.largo[p.hablamos - 1]}">📞 ${FRECUENCIA.corto[p.hablamos - 1]}</span>`;
   if (p.intimidad) h += `<span class="chip i" title="${ESCALAS.intimidad.largo[p.intimidad - 1]}">♥ ${ESCALAS.intimidad.corto[p.intimidad - 1]}</span>`;
   (p.etiquetas || []).slice(0, 3).forEach(e => h += `<span class="chip">${esc(e)}</span>`);
   return h;
@@ -696,12 +720,22 @@ $("#pNueva").addEventListener("click", () => {
 });
 
 /* ===================== Círculos ===================== */
-let vistaCirculos = "tiempo";
+let vistaCirculos = "contacto", modoContacto = "mix";
 $$("#cVista button").forEach(b => b.addEventListener("click", () => {
   vistaCirculos = b.dataset.v;
   $$("#cVista button").forEach(x => x.classList.toggle("on", x === b));
   renderCirculos();
 }));
+$("#cModo").addEventListener("click", e => {
+  const b = e.target.closest("[data-m]"); if (!b) return;
+  modoContacto = b.dataset.m;
+  $$("#cModo button").forEach(x => x.classList.toggle("on", x === b));
+  renderCirculos();
+});
+
+const nivelColor = (v, n) => COLORES[Math.round(((v - 1) / (n - 1)) * (COLORES.length - 1))];
+const valorEje = (p, eje) => eje === "contacto" ? contacto(p, modoContacto) : (p[eje] || null);
+const nombreModo = () => ({ mix: "contacto", vemos: "en persona", hablamos: "a distancia" })[modoContacto];
 
 function escalaSvg(svg, ancho) {
   const px = svg.clientWidth || ancho;
@@ -712,73 +746,78 @@ window.addEventListener("resize", debounce(() => renderCirculos(), 200));
 function renderCirculos() {
   const svg = $("#cSvg");
   if (svg.closest(".hidden")) return;
+  $("#cModo").classList.toggle("hidden", vistaCirculos === "intimidad");
   const todas = personas().filter(pasaFiltro);
   if (vistaCirculos === "mapa") return renderMapa(svg, todas);
 
-  const eje = vistaCirculos, otro = eje === "tiempo" ? "intimidad" : "tiempo";
-  const R0 = 40, W = 52;
+  const eje = vistaCirculos, otro = eje === "contacto" ? "intimidad" : "contacto";
+  const niveles = ESCALAS[eje].corto, N = niveles.length, NO = ESCALAS[otro].corto.length;
+  const R0 = 40, W = 260 / N;
   svg.setAttribute("viewBox", "-305 -305 610 610");
-  const k = escalaSvg(svg, 610), rd = (6 * k).toFixed(1);
+  const sc = escalaSvg(svg, 610), rd = (6 * sc).toFixed(1);
   let h = "";
-  const opac = [0.24, 0.17, 0.11, 0.07, 0.035];
-  for (let k = 5; k >= 1; k--) h += `<circle r="${R0 + k * W}" fill="rgba(181,83,47,${opac[k - 1]})" stroke="#e6d6c0" stroke-width="1"/>`;
-  h += `<circle r="${R0}" fill="#b5532f"/><text y="${(5 * k).toFixed(1)}" text-anchor="middle" style="font:700 calc(var(--fs) * 1.2) var(--sans);fill:#fff">Yo</text>`;
-  for (let k = 1; k <= 5; k++) h += `<text class="ring-label" y="${-(R0 + k * W) + 15}">${ESCALAS[eje].corto[k - 1]}</text>`;
+  for (let r = N; r >= 1; r--) h += `<circle r="${(R0 + r * W).toFixed(1)}" fill="rgba(181,83,47,${(0.26 * Math.pow(0.68, r - 1)).toFixed(3)})" stroke="#e6d6c0" stroke-width="1"/>`;
+  h += `<circle r="${R0}" fill="#b5532f"/><text y="${(5 * sc).toFixed(1)}" text-anchor="middle" style="font:700 calc(var(--fs) * 1.2) var(--sans);fill:#fff">Yo</text>`;
+  for (let r = 1; r <= N; r++) h += `<text class="ring-label" y="${(-(R0 + r * W) + 3 + 11 * sc).toFixed(1)}">${niveles[r - 1]}</text>`;
 
-  for (let k = 1; k <= 5; k++) {
-    const grupo = todas.filter(p => p[eje] === k).sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+  for (let r = 1; r <= N; r++) {
+    const grupo = todas.filter(p => valorEje(p, eje) === r).sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
     const n = grupo.length; if (!n) continue;
-    const off = hash("anillo" + k) * Math.PI * 2;
-    const mid = R0 + (k - 0.5) * W;
+    const off = hash("anillo" + r) * Math.PI * 2;
+    const mid = R0 + (r - 0.5) * W;
     grupo.forEach((p, i) => {
       const ang = off + (i * 2 * Math.PI) / n;
-      const r = mid + (n > 10 ? (i % 2 ? 9 : -9) : 0);
-      const x = Math.cos(ang) * r, y = Math.sin(ang) * r;
+      const rr = mid + (n > 10 ? (i % 2 ? 8 : -8) : 0);
+      const x = Math.cos(ang) * rr, y = Math.sin(ang) * rr;
       const der = Math.cos(ang) >= 0;
-      const color = p[otro] ? COLORES[p[otro] - 1] : "#fff";
+      const vo = valorEje(p, otro);
+      const color = vo ? nivelColor(vo, NO) : "#fff";
       h += `<g class="dot" data-open="${p.id}"><title>${esc(p.nombre)}</title>
         <circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${rd}" fill="${color}" stroke="#7a6f60" stroke-width="1"/>
-        <text class="dot-label" x="${(x + (der ? 1 : -1) * (6 * k + 4)).toFixed(1)}" y="${(y + 4 * k).toFixed(1)}" text-anchor="${der ? "start" : "end"}">${esc(recorta(p.nombre, 16))}</text></g>`;
+        <text class="dot-label" x="${(x + (der ? 1 : -1) * (6 * sc + 4)).toFixed(1)}" y="${(y + 4 * sc).toFixed(1)}" text-anchor="${der ? "start" : "end"}">${esc(recorta(p.nombre, 16))}</text></g>`;
     });
   }
   svg.innerHTML = h;
 
-  $("#cLeyenda").innerHTML = `<span>Color = ${ESCALAS[otro].titulo.toLowerCase()}:</span>` +
-    ESCALAS[otro].corto.map((t, i) => `<span><i style="background:${COLORES[i]}"></i>${t}</span>`).join("") +
+  $("#cLeyenda").innerHTML = `<span>Color = ${otro === "contacto" ? nombreModo() : "intimidad"}:</span>` +
+    ESCALAS[otro].corto.map((t, i) => `<span><i style="background:${nivelColor(i + 1, NO)}"></i>${t}</span>`).join("") +
     `<span><i style="background:#fff;border:1px solid #7a6f60"></i>Sin definir</span>`;
-  pintarSinColocar(todas.filter(p => !p[eje]), `sin «${ESCALAS[eje].titulo.toLowerCase()}»`);
+  pintarSinColocar(todas.filter(p => !valorEje(p, eje)), eje === "contacto" ? `sin frecuencia (${nombreModo()})` : "sin intimidad");
 }
 
 function renderMapa(svg, todas) {
   const P = 60, S = 480; // padding y tamaño útil
   svg.setAttribute("viewBox", "0 0 600 600");
-  const k = escalaSvg(svg, 600), rd = (6 * k).toFixed(1);
+  const sc = escalaSvg(svg, 600), rd = (6 * sc).toFixed(1);
   const M = 40;                            // margen interior para que los puntos no se salgan
-  const X = v => P + M + ((5 - v) / 4) * (S - 2 * M);   // tiempo: 1 (semanal) a la derecha
-  const Y = v => P + M + ((v - 1) / 4) * (S - 2 * M);   // intimidad: 1 (íntima) arriba
+  const NC = ESCALAS.contacto.corto.length, NI = ESCALAS.intimidad.corto.length;
+  const X = v => P + M + ((NC - v) / (NC - 1)) * (S - 2 * M);   // contacto: semanal a la derecha
+  const Y = v => P + M + ((v - 1) / (NI - 1)) * (S - 2 * M);    // intimidad: íntima arriba
   const lim = z => Math.min(P + S + 5, Math.max(P - 5, z));
   let h = `<rect x="${P - 20}" y="${P - 20}" width="${S + 40}" height="${S + 40}" rx="14" fill="#fffbf3" stroke="#e3d9c6"/>`;
   h += `<line x1="300" y1="${P - 20}" x2="300" y2="${P + S + 20}" stroke="#eadfcc" stroke-dasharray="4 5"/>`;
   h += `<line x1="${P - 20}" y1="300" x2="${P + S + 20}" y2="300" stroke="#eadfcc" stroke-dasharray="4 5"/>`;
   h += `<text class="quad" x="${P + S}" y="${P + 4}" text-anchor="end">tu gente</text>`;
-  h += `<text class="quad" x="${P}" y="${P + 4}">íntimos que ves poco</text>`;
-  h += `<text class="quad" x="${P + S}" y="${P + S + 4}" text-anchor="end">mucho roce, poca confianza</text>`;
+  h += `<text class="quad" x="${P}" y="${P + 4}">íntimos, poco trato</text>`;
+  h += `<text class="quad" x="${P + S}" y="${P + S + 4}" text-anchor="end">mucho trato, poca confianza</text>`;
   h += `<text class="quad" x="${P}" y="${P + S + 4}">lejos</text>`;
-  h += `<text class="axis" x="300" y="${P + S + 45}" text-anchor="middle">← menos tiempo · · · más tiempo juntos →</text>`;
+  h += `<text class="axis" x="300" y="${P + S + 45}" text-anchor="middle">← menos · · · más ${nombreModo()} →</text>`;
   h += `<text class="axis" transform="translate(22 300) rotate(-90)" text-anchor="middle">← menos · · · más intimidad →</text>`;
 
-  const colocadas = todas.filter(p => p.tiempo && p.intimidad);
+  const colocadas = todas.filter(p => valorEje(p, "contacto") && p.intimidad);
   colocadas.forEach(p => {
-    const jx = (hash(p.id + "x") - 0.5) * 60, jy = (hash(p.id + "y") - 0.5) * 60;
-    const x = lim(X(p.tiempo) + jx), y = lim(Y(p.intimidad) + jy);
+    const jx = (hash(p.id + "x") - 0.5) * 56, jy = (hash(p.id + "y") - 0.5) * 56;
+    const x = lim(X(valorEje(p, "contacto")) + jx), y = lim(Y(p.intimidad) + jy);
     const der = x < 380;
     h += `<g class="dot" data-open="${p.id}"><title>${esc(p.nombre)}</title>
-      <circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${rd}" fill="${COLORES[Math.min(p.tiempo, p.intimidad) - 1]}" stroke="#7a6f60" stroke-width="1"/>
-      <text class="dot-label" x="${(x + (der ? 1 : -1) * (6 * k + 4)).toFixed(1)}" y="${(y + 4 * k).toFixed(1)}" text-anchor="${der ? "start" : "end"}">${esc(recorta(p.nombre, 16))}</text></g>`;
+      <circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${rd}" fill="${nivelColor(p.intimidad, NI)}" stroke="#7a6f60" stroke-width="1"/>
+      <text class="dot-label" x="${(x + (der ? 1 : -1) * (6 * sc + 4)).toFixed(1)}" y="${(y + 4 * sc).toFixed(1)}" text-anchor="${der ? "start" : "end"}">${esc(recorta(p.nombre, 16))}</text></g>`;
   });
   svg.innerHTML = h;
-  $("#cLeyenda").innerHTML = `<span>Cada punto cruza el tiempo que pasáis juntos con la intimidad.</span>`;
-  pintarSinColocar(todas.filter(p => !(p.tiempo && p.intimidad)), "sin los dos niveles");
+  $("#cLeyenda").innerHTML = modoContacto === "mix"
+    ? `<span>Cruza la intimidad con el contacto (lo más frecuente entre veros y hablar).</span>`
+    : `<span>Cruza la intimidad con el contacto ${nombreModo()}.</span>`;
+  pintarSinColocar(todas.filter(p => !(valorEje(p, "contacto") && p.intimidad)), "sin los dos niveles");
 }
 
 function pintarSinColocar(lista, que) {
@@ -1000,7 +1039,7 @@ function pintarSeg(cont, eje, valor) {
     `<button data-n="${i + 1}" class="${valor === i + 1 ? "on" : ""}" title="${ESCALAS[eje].largo[i]}">${t}</button>`).join("") +
     `<button data-n="0" class="${!valor ? "on" : ""}" title="Sin definir">—</button>`;
 }
-for (const [cont, eje] of [["#fTiempo", "tiempo"], ["#fIntimidad", "intimidad"]]) {
+for (const [cont, eje] of [["#fVemos", "vemos"], ["#fHablamos", "hablamos"], ["#fIntimidad", "intimidad"]]) {
   $(cont).addEventListener("click", e => {
     const b = e.target.closest("[data-n]"); if (!b) return;
     const p = personaConFormulario(); if (!p) return;
@@ -1024,7 +1063,8 @@ function abrirFicha(id) {
   $("#fFechas").value = p.fechas || "";
   $("#fEtiquetas").value = (p.etiquetas || []).join(", ");
   $("#fNuevaNota").value = ""; $("#fApTexto").value = "";
-  pintarSeg("#fTiempo", "tiempo", p.tiempo);
+  pintarSeg("#fVemos", "vemos", p.vemos);
+  pintarSeg("#fHablamos", "hablamos", p.hablamos);
   pintarSeg("#fIntimidad", "intimidad", p.intimidad);
   renderFichaDinamica();
   if (!ficha.open) ficha.showModal();
@@ -1109,7 +1149,7 @@ $("#fileImport").addEventListener("change", async e => {
     const d = JSON.parse(await f.text());
     const np = (d.personas || []).length, na = (d.apuntes || []).length;
     if (!confirm(`Importar ${np} personas y ${na} apuntes? Las que tengan el mismo id se sobrescriben.`)) return;
-    (d.personas || []).forEach(p => p.id && guardar("personas", p));
+    (d.personas || []).forEach(p => p.id && guardar("personas", migrar("personas", p)));
     (d.apuntes || []).forEach(a => a.id && guardar("apuntes", a));
     toast("Copia importada");
   } catch (err) { toast("Ese archivo no es una copia válida"); }
