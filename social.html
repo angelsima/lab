@@ -136,6 +136,50 @@ h3{font-family:var(--serif);font-size:1.1rem;margin:22px 0 6px;font-weight:600}
 
 .toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:#fff;border-radius:12px;padding:.6rem 1rem;display:flex;gap:12px;align-items:center;z-index:50;max-width:92vw;box-shadow:0 6px 20px rgba(0,0,0,.25)}
 .toast button{background:none;border:0;color:#f3b38f;font-weight:700;padding:0}
+
+/* Relaciones */
+nav button{font-size:.92rem}
+.chips-filtro{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px;margin:0 0 4px;scrollbar-width:none}
+.chips-filtro::-webkit-scrollbar{display:none}
+.chips-filtro button{flex:0 0 auto;border:1px solid var(--line);background:var(--card);border-radius:99px;padding:.25rem .7rem;font-size:.82rem;white-space:nowrap}
+.chips-filtro button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.chip.r{background:#e8e4f1;color:#4b3f72}
+.rel-sel{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.rel-sel button{border:1px solid var(--line);background:#fff;border-radius:99px;padding:.3rem .7rem;font-size:.85rem}
+.rel-sel button.on{background:#4b3f72;color:#fff;border-color:#4b3f72}
+.campo-t{display:block;font-size:.8rem;font-weight:600;color:var(--muted);margin:12px 0 4px;text-transform:uppercase;letter-spacing:.04em}
+.cumple{display:flex;gap:8px}
+.cumple > *{flex:1;min-width:0}
+.ficha-body label.check,label.check{display:flex;gap:8px;align-items:center;text-transform:none;letter-spacing:0;font-weight:400;font-size:.9rem;color:var(--ink);margin:8px 0}
+label.check input{width:auto;margin:0}
+.ev-add{flex-wrap:wrap}
+.ev-add input[type=date]{flex:0 0 150px}
+.ev{display:flex;gap:10px;align-items:baseline;padding:7px 0;border-bottom:1px dashed var(--line)}
+.ev-f{font-size:.82rem;color:var(--muted);flex:0 0 auto;min-width:96px}
+.ev-t{flex:1}
+.ev.pasado{opacity:.5}
+.badge{font-size:.7rem;background:var(--soft);border-radius:99px;padding:.05rem .45rem;color:var(--muted);margin-left:4px}
+/* Calendario */
+.bloque{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin-bottom:12px}
+.bloque h3{margin:2px 0 6px}
+.item{display:flex;gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--line)}
+.bloque h3 + .item{border-top:0}
+.item-cuando{flex:0 0 auto;min-width:86px;font-size:.78rem;color:var(--muted)}
+.item-cuando b{display:block;color:var(--acc);font-size:.88rem}
+.item-txt{flex:1;text-align:left;background:none;border:0;padding:0}
+.item .btn{padding:.3rem .6rem;font-size:.8rem}
+.cal-head{display:flex;align-items:center;justify-content:space-between;margin:6px 0 8px}
+.cal-head button{background:var(--soft);border:0;border-radius:10px;width:42px;height:36px;font-size:1.2rem}
+.cal-head span{font-family:var(--serif);font-size:1.2rem;font-weight:600}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:12px}
+.cal-dow{text-align:center;font-size:.72rem;color:var(--muted);font-weight:600;padding:2px 0}
+.dia{aspect-ratio:1/1;background:#fff;border:1px solid var(--line);border-radius:8px;padding:3px 1px;display:flex;flex-direction:column;align-items:center;font-size:.85rem}
+.dia.fuera{visibility:hidden}
+.dia.hoy{border-color:var(--acc);font-weight:700;color:var(--acc)}
+.dia.sel{background:var(--ink);color:#fff;border-color:var(--ink)}
+.dia .marcas{font-size:.68rem;line-height:1;margin-top:auto;white-space:nowrap;overflow:hidden;max-width:100%}
+details.rapida summary{cursor:pointer;font-weight:600;color:var(--acc)}
+details.rapida[open] summary{margin-bottom:8px}
 </style>
 </head>
 <body>
@@ -163,6 +207,7 @@ h3{font-family:var(--serif);font-size:1.1rem;margin:22px 0 6px;font-weight:600}
       <nav>
         <button data-tab="personas" class="on">Personas</button>
         <button data-tab="circulos">Círculos</button>
+        <button data-tab="calendario">Calendario</button>
         <button data-tab="apuntes">Apuntes</button>
       </nav>
     </div>
@@ -194,6 +239,7 @@ h3{font-family:var(--serif);font-size:1.1rem;margin:22px 0 6px;font-weight:600}
 
     <!-- PERSONAS -->
     <section id="tab-personas">
+      <div class="chips-filtro" id="pRel"></div>
       <div class="toolbar">
         <input id="pBuscar" type="search" placeholder="Buscar en nombres, etiquetas y notas…">
         <select id="pOrden" aria-label="Ordenar">
@@ -214,9 +260,29 @@ h3{font-family:var(--serif);font-size:1.1rem;margin:22px 0 6px;font-weight:600}
         <button data-v="intimidad">Intimidad</button>
         <button data-v="mapa">Mapa</button>
       </div>
+      <div class="chips-filtro" id="cRel"></div>
       <div class="lienzo"><svg id="cSvg" viewBox="-310 -310 620 620" role="img"></svg></div>
       <div class="leyenda" id="cLeyenda"></div>
       <div class="sin-colocar" id="cSin"></div>
+    </section>
+
+    <!-- CALENDARIO -->
+    <section id="tab-calendario" class="hidden">
+      <div class="chips-filtro" id="kRel"></div>
+      <div id="kPreguntar"></div>
+      <div id="kProximos"></div>
+      <div class="cal-head"><button id="kPrev" aria-label="Mes anterior">‹</button><span id="kMes"></span><button id="kNext" aria-label="Mes siguiente">›</button></div>
+      <div class="cal-grid" id="kGrid"></div>
+      <div id="kLista"></div>
+      <details class="rapida" id="kAdd">
+        <summary>+ Añadir una fecha</summary>
+        <div class="fila"><input id="kNombre" list="dlPersonas" placeholder="¿De quién?" autocomplete="off">
+          <select id="kTipo" style="width:auto;flex:0 0 auto"><option value="evento">📍 Evento</option><option value="cumple">🎂 Cumpleaños</option></select></div>
+        <div class="fila" style="margin-top:8px"><input type="date" id="kFecha" style="flex:0 0 160px"><input id="kTexto" placeholder="¿Qué pasa ese día?"></div>
+        <label class="check" id="kAnualL"><input type="checkbox" id="kAnual"> Se repite cada año</label>
+        <div id="kAyuda" class="muted" style="font-size:.85rem"></div>
+        <div class="acciones"><button class="btn" id="kGuardar">Guardar</button></div>
+      </details>
     </section>
 
     <!-- APUNTES -->
@@ -234,20 +300,30 @@ h3{font-family:var(--serif);font-size:1.1rem;margin:22px 0 6px;font-weight:600}
     <button class="cerrar" id="fCerrar" aria-label="Cerrar">✕</button>
   </div>
   <div class="ficha-body">
+    <div class="nivel"><div class="t">Relación</div><div class="rel-sel" id="fRel"></div></div>
     <div class="nivel"><div class="t">Tiempo que pasamos juntos</div><div class="seg" id="fTiempo"></div></div>
     <div class="nivel"><div class="t">Intimidad</div><div class="seg" id="fIntimidad"></div></div>
 
     <label>Lo que le importa
       <textarea id="fImportante" rows="3" placeholder="Su gente, sus proyectos, lo que le ilusiona o le preocupa…"></textarea>
     </label>
-    <div class="dos">
-      <label>De qué la conozco<input id="fConocer" placeholder="Impro, la uni, amiga de…"></label>
-      <label>Cumpleaños<input id="fCumple" placeholder="12 de marzo"></label>
-    </div>
-    <label>Fechas y cosas a recordar
-      <textarea id="fFechas" rows="2" placeholder="Examen en enero, se muda en verano, su perro se llama…"></textarea>
+    <label>De qué la conozco<input id="fConocer" placeholder="Impro, la uni, amiga de…"></label>
+    <span class="campo-t">Cumpleaños</span>
+    <div class="cumple"><select id="fCumpleD" aria-label="Día"></select><select id="fCumpleM" aria-label="Mes"></select><input id="fCumpleA" inputmode="numeric" maxlength="4" placeholder="Año (opc.)" aria-label="Año de nacimiento"></div>
+    <div id="fCumpleViejo" class="muted" style="font-size:.85rem"></div>
+    <label>Cosas a recordar
+      <textarea id="fFechas" rows="2" placeholder="Su perro se llama Lola, no come carne, le encanta el jazz…"></textarea>
     </label>
     <label>Etiquetas<input id="fEtiquetas" placeholder="música, Murcia, Eskilsuá"></label>
+
+    <h3>Fechas importantes</h3>
+    <div class="add ev-add">
+      <input type="date" id="fEvFecha" aria-label="Fecha">
+      <input id="fEvTexto" placeholder="Examen, entrevista, viaje, mudanza…">
+      <button class="btn" id="fAddEv">+</button>
+    </div>
+    <label class="check"><input type="checkbox" id="fEvAnual"> Se repite cada año (aniversario, santo…)</label>
+    <div id="fEventos"></div>
 
     <h3>Notas</h3>
     <div class="add">
@@ -310,6 +386,22 @@ const TIPOS = {
 };
 const COLORES = ["#8e3a1f", "#b5532f", "#d08a5c", "#dcb98f", "#cfc6b6"]; // nivel 1..5
 
+// Tipos de relación. Puedes cambiar nombres, quitar o añadir (la clave de la izquierda no la cambies si ya la usas).
+const RELACIONES = {
+  familia:     { icono: "👪", nombre: "Familia" },
+  pareja:      { icono: "💞", nombre: "Pareja" },
+  profunda:    { icono: "💛", nombre: "Amistad profunda" },
+  amistad:     { icono: "🙂", nombre: "Amistad" },
+  colega:      { icono: "🤙", nombre: "Colega" },
+  trabajo:     { icono: "💼", nombre: "Trabajo" },
+  estudios:    { icono: "🎓", nombre: "Estudios" },
+  aficiones:   { icono: "🎸", nombre: "Aficiones" },
+  interesante: { icono: "✨", nombre: "Gente interesante" }
+};
+const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+const DIAS_PROXIMOS = 30;   // qué cuenta como "próximo" en el calendario
+const DIAS_PREGUNTAR = 21;  // cuántos días después de un evento te lo sigue recordando para preguntar
+
 /* ===================== Utilidades ===================== */
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -330,6 +422,16 @@ function textoHace(ts) {
 }
 const fmtFecha = ts => new Date(ts).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" });
 function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+
+/* --- fechas --- */
+const pad = n => String(n).padStart(2, "0");
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const hoy0 = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+const diasEntre = (a, b) => Math.round((b - a) / 86400000);
+const diasMes = (y, m) => new Date(y, m, 0).getDate();               // m: 1..12
+const fechaEn = (y, m, d) => new Date(y, m - 1, Math.min(d, diasMes(y, m))); // 29-feb → 28-feb
+const enDias = n => n === 0 ? "hoy" : n === 1 ? "mañana" : n === -1 ? "ayer" : n > 0 ? `en ${n} días` : `hace ${-n} días`;
+const fmtDiaMes = d => d.toLocaleDateString("es-ES", { weekday: "short", day: "numeric", month: "short" });
 
 let toastTimer;
 function toast(msg, accion, textoAccion = "Abrir") {
@@ -396,7 +498,8 @@ const borrar = (c, id) => backend.remove(c, id);
 function nuevaPersona(nombre) {
   const ahora = Date.now();
   return { id: nuevoId(), nombre: nombre.trim(), conocer: "", importante: "", fechas: "", cumple: "",
-           etiquetas: [], tiempo: null, intimidad: null, notas: [], creado: ahora, actualizado: ahora };
+           etiquetas: [], relaciones: [], cumpleDia: null, cumpleMes: null, cumpleAnio: null, eventos: [],
+           tiempo: null, intimidad: null, notas: [], creado: ahora, actualizado: ahora };
 }
 const personas = () => [...datos.personas.values()];
 const apuntes = () => [...datos.apuntes.values()];
@@ -406,13 +509,82 @@ function apuntesDe(id) { return apuntes().filter(a => a.personaId === id); }
 function esCercana(p) { return (p.tiempo && p.tiempo <= 2) || (p.intimidad && p.intimidad <= 2); }
 function cercania(p) { return Math.min(p.tiempo || 9, p.intimidad || 9); }
 
+/* --- filtro por relación (compartido por Personas, Círculos y Calendario) --- */
+let filtroRel = null;
+const pasaFiltro = p => !filtroRel || (p.relaciones || []).includes(filtroRel);
+function pintarFiltrosRel() {
+  const cuenta = k => personas().filter(p => (p.relaciones || []).includes(k)).length;
+  const usadas = Object.entries(RELACIONES).filter(([k]) => cuenta(k) || filtroRel === k);
+  const html = usadas.length ? `<button data-rel="" class="${!filtroRel ? "on" : ""}">Todas</button>` +
+    usadas.map(([k, r]) => `<button data-rel="${k}" class="${filtroRel === k ? "on" : ""}">${r.icono} ${r.nombre} · ${cuenta(k)}</button>`).join("") : "";
+  for (const id of ["#pRel", "#cRel", "#kRel"]) $(id).innerHTML = html;
+}
+for (const id of ["#pRel", "#cRel", "#kRel"]) $(id).addEventListener("click", e => {
+  const b = e.target.closest("[data-rel]"); if (!b) return;
+  filtroRel = b.dataset.rel || null;
+  pintarFiltrosRel(); renderPersonas(); renderCirculos(); renderCalendario();
+});
+
+/* --- cumpleaños y fechas --- */
+function validaFecha(d, m, a) {
+  if (!(d >= 1 && d <= 31 && m >= 1 && m <= 12)) return null;
+  let y = a ? +a : null; if (y && y < 100) y += y > 30 ? 1900 : 2000;
+  return { d, m, a: y };
+}
+function parseCumple(txt) {   // para los cumples que escribiste como texto ("12 de marzo", "12/3/1990")
+  const s = norm(txt); if (!s) return null;
+  let r = s.match(/^(\d{1,2})\s*[\/\-.]\s*(\d{1,2})(?:\s*[\/\-.]\s*(\d{2,4}))?$/);
+  if (r) return validaFecha(+r[1], +r[2], r[3]);
+  r = s.match(/(\d{1,2})\s*(?:de\s+)?([a-z]{3,})(?:\s*(?:de\s+|del\s+)?(\d{4}))?/);
+  if (r) { const m = MESES.findIndex(x => x.startsWith(r[2].slice(0, 3))) + 1; if (m) return validaFecha(+r[1], m, r[3]); }
+  return null;
+}
+function cumpleDe(p) {
+  if (p.cumpleDia && p.cumpleMes) return { d: p.cumpleDia, m: p.cumpleMes, a: p.cumpleAnio || null };
+  return parseCumple(p.cumple);
+}
+function fechasDe(p) {   // todo lo que tiene fecha de una persona
+  const out = [];
+  const c = cumpleDe(p);
+  if (c) out.push({ tipo: "cumple", p, d: c.d, m: c.m, nacido: c.a, anual: true });
+  for (const ev of p.eventos || []) {
+    if (!ev.fecha) continue;
+    const [y, m, d] = ev.fecha.split("-").map(Number);
+    out.push({ tipo: "evento", p, ev, y, m, d, anual: !!ev.anual });
+  }
+  return out;
+}
+const todasLasFechas = () => personas().flatMap(fechasDe);
+function ocurrenciaEn(f, y) { return f.anual ? fechaEn(y, f.m, f.d) : (f.y === y ? new Date(f.y, f.m - 1, f.d) : null); }
+function proximaOcurrencia(f, desde) {
+  if (!f.anual) { const dt = new Date(f.y, f.m - 1, f.d); return dt >= desde ? dt : null; }
+  const dt = fechaEn(desde.getFullYear(), f.m, f.d);
+  return dt >= desde ? dt : fechaEn(desde.getFullYear() + 1, f.m, f.d);
+}
+function ultimaOcurrencia(f, hasta) {
+  if (!f.anual) { const dt = new Date(f.y, f.m - 1, f.d); return dt <= hasta ? dt : null; }
+  const dt = fechaEn(hasta.getFullYear(), f.m, f.d);
+  return dt <= hasta ? dt : fechaEn(hasta.getFullYear() - 1, f.m, f.d);
+}
+function tituloFecha(f, dt) {
+  if (f.tipo === "cumple") return `🎂 Cumple de ${f.p.nombre}` + (f.nacido ? ` (${dt.getFullYear() - f.nacido})` : "");
+  return `📍 ${f.ev.texto} · ${f.p.nombre}`;
+}
+function proximoDe(p, dias = 14) {
+  const hoy = hoy0();
+  return fechasDe(p).map(f => ({ f, dt: proximaOcurrencia(f, hoy) }))
+    .filter(x => x.dt && diasEntre(hoy, x.dt) <= dias).sort((a, b) => a.dt - b.dt)[0] || null;
+}
+
 /* ===================== Render: general ===================== */
 function renderTodo() {
   // datalist para "¿De quién?"
   $("#dlPersonas").innerHTML = personas().sort((a, b) => a.nombre.localeCompare(b.nombre, "es"))
     .map(p => `<option value="${esc(p.nombre)}">`).join("");
+  pintarFiltrosRel();
   renderPersonas();
   renderCirculos();
+  renderCalendario();
   renderApuntes();
   if ($("#ficha").open) renderFichaDinamica();
 }
@@ -454,7 +626,7 @@ $("#qTexto").addEventListener("keydown", e => { if (e.key === "Enter" && (e.ctrl
 /* ===================== Pestañas ===================== */
 $$("nav button").forEach(b => b.addEventListener("click", () => {
   $$("nav button").forEach(x => x.classList.toggle("on", x === b));
-  for (const t of ["personas", "circulos", "apuntes"]) $("#tab-" + t).classList.toggle("hidden", t !== b.dataset.tab);
+  for (const t of ["personas", "circulos", "calendario", "apuntes"]) $("#tab-" + t).classList.toggle("hidden", t !== b.dataset.tab);
   if (b.dataset.tab === "circulos") renderCirculos();
   try { localStorage.setItem("social:tab", b.dataset.tab); } catch {}
 }));
@@ -462,10 +634,12 @@ $$("nav button").forEach(b => b.addEventListener("click", () => {
 /* ===================== Personas ===================== */
 function textoBuscable(p) {
   return norm([p.nombre, p.conocer, p.importante, p.fechas, p.cumple, (p.etiquetas || []).join(" "),
-    ...(p.notas || []).map(n => n.texto)].join(" "));
+    ...(p.relaciones || []).map(k => RELACIONES[k]?.nombre || ""),
+    ...(p.eventos || []).map(e => e.texto), ...(p.notas || []).map(n => n.texto)].join(" "));
 }
 function chipsNivel(p) {
-  let h = "";
+  let h = (p.relaciones || []).filter(k => RELACIONES[k])
+    .map(k => `<span class="chip r">${RELACIONES[k].icono} ${RELACIONES[k].nombre}</span>`).join("");
   if (p.tiempo) h += `<span class="chip t" title="${ESCALAS.tiempo.largo[p.tiempo - 1]}">⏱ ${ESCALAS.tiempo.corto[p.tiempo - 1]}</span>`;
   if (p.intimidad) h += `<span class="chip i" title="${ESCALAS.intimidad.largo[p.intimidad - 1]}">♥ ${ESCALAS.intimidad.corto[p.intimidad - 1]}</span>`;
   (p.etiquetas || []).slice(0, 3).forEach(e => h += `<span class="chip">${esc(e)}</span>`);
@@ -474,7 +648,7 @@ function chipsNivel(p) {
 function renderPersonas() {
   const q = norm($("#pBuscar").value);
   const orden = $("#pOrden").value;
-  let lista = personas();
+  let lista = personas().filter(pasaFiltro);
   if (q) lista = lista.filter(p => textoBuscable(p).includes(q));
   const ultTs = p => (ultimaNota(p)?.ts ?? 0);
   const sorters = {
@@ -495,7 +669,9 @@ function renderPersonas() {
     const ref = u ? u.ts : p.creado;
     const pend = apuntesDe(p.id).filter(a => !a.hecho).length;
     const aviso = esCercana(p) && diasDesde(ref) > AVISO_DIAS;
+    const px = proximoDe(p);
     const pie = [
+      px ? `<span class="aviso">${px.f.tipo === "cumple" ? "🎂 cumple" : "📍 " + esc(recorta(px.f.ev.texto, 30))} ${enDias(diasEntre(hoy0(), px.dt))}</span>` : "",
       u ? `última nota ${textoHace(u.ts)}` : "",
       pend ? `${pend} pendiente${pend > 1 ? "s" : ""}` : "",
       aviso ? `<span class="aviso">hace tiempo que no apuntas nada</span>` : ""
@@ -536,7 +712,7 @@ window.addEventListener("resize", debounce(() => renderCirculos(), 200));
 function renderCirculos() {
   const svg = $("#cSvg");
   if (svg.closest(".hidden")) return;
-  const todas = personas();
+  const todas = personas().filter(pasaFiltro);
   if (vistaCirculos === "mapa") return renderMapa(svg, todas);
 
   const eje = vistaCirculos, otro = eje === "tiempo" ? "intimidad" : "tiempo";
@@ -647,10 +823,88 @@ $("#aFiltros").addEventListener("click", e => {
 });
 $("#aFiltros").addEventListener("change", e => { if (e.target.id === "aHechos") { verHechos = e.target.checked; renderApuntes(); } });
 
+/* ===================== Calendario ===================== */
+let calY = new Date().getFullYear(), calM = new Date().getMonth() + 1, calDia = null;
+function itemFecha(f, dt, extra = "") {
+  return `<div class="item"><div class="item-cuando"><b>${enDias(diasEntre(hoy0(), dt))}</b>${fmtDiaMes(dt)}</div>
+    <button class="item-txt" data-open="${f.p.id}">${esc(tituloFecha(f, dt))}</button>${extra}</div>`;
+}
+function renderCalendario() {
+  const hoy = hoy0(), ayer = new Date(hoy); ayer.setDate(ayer.getDate() - 1);
+  const fechas = todasLasFechas().filter(f => pasaFiltro(f.p));
+
+  // Eventos que ya pasaron: para preguntar qué tal fue
+  const preg = fechas.filter(f => f.tipo === "evento").map(f => ({ f, dt: ultimaOcurrencia(f, ayer) }))
+    .filter(({ f, dt }) => dt && diasEntre(dt, hoy) <= DIAS_PREGUNTAR && f.ev.preguntado !== ymd(dt))
+    .sort((a, b) => b.dt - a.dt);
+  $("#kPreguntar").innerHTML = preg.length ? `<div class="bloque"><h3>Para preguntar: ¿qué tal fue?</h3>` +
+    preg.map(({ f, dt }) => itemFecha(f, dt, `<button class="btn sec" data-preguntado="${f.p.id}|${f.ev.id}|${ymd(dt)}">✓ Preguntado</button>`)).join("") + `</div>` : "";
+
+  // Próximos
+  const prox = fechas.map(f => ({ f, dt: proximaOcurrencia(f, hoy) }))
+    .filter(x => x.dt && diasEntre(hoy, x.dt) <= DIAS_PROXIMOS).sort((a, b) => a.dt - b.dt);
+  $("#kProximos").innerHTML = `<div class="bloque"><h3>Próximos ${DIAS_PROXIMOS} días</h3>` +
+    (prox.length ? prox.map(x => itemFecha(x.f, x.dt)).join("") : `<div class="muted">Nada a la vista. Añade cumpleaños y fechas en las fichas o abajo.</div>`) + `</div>`;
+
+  // Mes
+  const primero = new Date(calY, calM - 1, 1);
+  $("#kMes").textContent = `${MESES[calM - 1][0].toUpperCase()}${MESES[calM - 1].slice(1)} ${calY}`;
+  const delMes = fechas.map(f => ({ f, dt: ocurrenciaEn(f, calY) }))
+    .filter(x => x.dt && x.dt.getMonth() + 1 === calM).sort((a, b) => a.dt - b.dt);
+  const porDia = {}; delMes.forEach(x => (porDia[x.dt.getDate()] ||= []).push(x));
+  let g = ["L", "M", "X", "J", "V", "S", "D"].map(d => `<div class="cal-dow">${d}</div>`).join("");
+  for (let i = 0; i < (primero.getDay() + 6) % 7; i++) g += `<div class="dia fuera"></div>`;
+  for (let d = 1; d <= diasMes(calY, calM); d++) {
+    const xs = porDia[d] || [];
+    const esHoy = calY === hoy.getFullYear() && calM === hoy.getMonth() + 1 && d === hoy.getDate();
+    const marcas = xs.slice(0, 2).map(x => x.f.tipo === "cumple" ? "🎂" : "📍").join("") + (xs.length > 2 ? "+" : "");
+    g += `<button class="dia ${esHoy ? "hoy" : ""} ${calDia === d ? "sel" : ""}" data-dia="${d}">${d}<span class="marcas">${marcas}</span></button>`;
+  }
+  $("#kGrid").innerHTML = g;
+  const lista = calDia ? (porDia[calDia] || []) : delMes;
+  $("#kLista").innerHTML = `<div class="bloque"><h3>${calDia ? `${calDia} de ${MESES[calM - 1]}` : `En ${MESES[calM - 1]}`}</h3>` +
+    (lista.length ? lista.map(x => itemFecha(x.f, x.dt)).join("") : `<div class="muted">Nada apuntado.</div>`) + `</div>`;
+}
+$("#kPrev").addEventListener("click", () => { if (--calM < 1) { calM = 12; calY--; } calDia = null; renderCalendario(); });
+$("#kNext").addEventListener("click", () => { if (++calM > 12) { calM = 1; calY++; } calDia = null; renderCalendario(); });
+$("#kGrid").addEventListener("click", e => {
+  const b = e.target.closest("[data-dia]"); if (!b) return;
+  const d = +b.dataset.dia; calDia = calDia === d ? null : d; renderCalendario();
+});
+$("#kTipo").addEventListener("change", () => {
+  const c = $("#kTipo").value === "cumple";
+  $("#kTexto").classList.toggle("hidden", c); $("#kAnualL").classList.toggle("hidden", c);
+  $("#kAyuda").textContent = c ? "Si pones su año de nacimiento real, te dirá cuántos cumple. Si no lo sabes, pon cualquier año de ahora." : "";
+});
+$("#kGuardar").addEventListener("click", () => {
+  const nombre = $("#kNombre").value.trim(), fecha = $("#kFecha").value, tipo = $("#kTipo").value, texto = $("#kTexto").value.trim();
+  if (!nombre) return toast("¿De quién es la fecha?");
+  if (!fecha) return toast("Elige una fecha");
+  if (tipo === "evento" && !texto) return toast("¿Qué pasa ese día?");
+  let p = buscarPorNombre(nombre) || nuevaPersona(nombre);
+  const [y, m, d] = fecha.split("-").map(Number);
+  const anioActual = new Date().getFullYear();
+  if (tipo === "cumple") p = { ...p, cumpleDia: d, cumpleMes: m, cumpleAnio: y < anioActual ? y : null, cumple: "" };
+  else p = { ...p, eventos: [...(p.eventos || []), { id: nuevoId(), fecha, texto, anual: $("#kAnual").checked }] };
+  guardar("personas", { ...p, actualizado: Date.now() });
+  calY = tipo === "cumple" ? anioActual : y; calM = m; calDia = null;
+  $("#kTexto").value = ""; $("#kFecha").value = ""; $("#kAnual").checked = false;
+  const id = p.id; toast(`Guardado en ${p.nombre}`, () => abrirFicha(id));
+  renderCalendario();
+});
+
 /* ===================== Delegación de clicks ===================== */
 document.addEventListener("click", e => {
   const ab = e.target.closest("[data-open]");
   if (ab) { e.preventDefault(); abrirFicha(ab.dataset.open); return; }
+  const pr = e.target.closest("[data-preguntado]");
+  if (pr) {
+    const [pid, eid, f] = pr.dataset.preguntado.split("|");
+    const p = datos.personas.get(pid);
+    if (p) guardar("personas", { ...p, eventos: (p.eventos || []).map(ev => ev.id === eid ? { ...ev, preguntado: f } : ev) });
+    toast("¿Anotas lo que te contó?", () => abrirFicha(pid), "Anotar");
+    return;
+  }
   const del = e.target.closest("[data-ap-del]");
   if (del) { if (confirm("¿Borrar este apunte?")) borrar("apuntes", del.dataset.apDel); return; }
 });
@@ -671,14 +925,23 @@ function personaConFormulario(id = fichaId) {
     nombre: $("#fNombre").value.trim() || p.nombre,
     importante: $("#fImportante").value,
     conocer: $("#fConocer").value,
-    cumple: $("#fCumple").value,
+    ...camposCumple(p),
     fechas: $("#fFechas").value,
     etiquetas: $("#fEtiquetas").value.split(",").map(s => s.trim()).filter(Boolean),
     actualizado: Date.now()
   };
 }
+function camposCumple(p) {
+  const d = +$("#fCumpleD").value || null, m = +$("#fCumpleM").value || null, a = +$("#fCumpleA").value || null;
+  const ok = !!(d && m);
+  return {
+    cumpleDia: ok ? d : null, cumpleMes: ok ? m : null,
+    cumpleAnio: ok && a && a > 1900 && a <= new Date().getFullYear() ? a : null,
+    cumple: ok || cumpleDe(p) ? "" : (p.cumple || "")   // el texto viejo solo se conserva si no se pudo entender
+  };
+}
 function hayCambios(a, b) {
-  return ["nombre", "importante", "conocer", "cumple", "fechas"].some(k => (a[k] || "") !== (b[k] || "")) ||
+  return ["nombre", "importante", "conocer", "cumple", "fechas", "cumpleDia", "cumpleMes", "cumpleAnio"].some(k => (a[k] || "") !== (b[k] || "")) ||
     (a.etiquetas || []).join("|") !== (b.etiquetas || []).join("|");
 }
 function guardarCamposFicha(id) {
@@ -687,7 +950,50 @@ function guardarCamposFicha(id) {
   if (orig && p && hayCambios(orig, p)) guardar("personas", p);
 }
 const guardarFicha = debounce(guardarCamposFicha, 600);
-["#fNombre", "#fImportante", "#fConocer", "#fCumple", "#fFechas", "#fEtiquetas"].forEach(s => $(s).addEventListener("input", () => guardarFicha(fichaId)));
+["#fNombre", "#fImportante", "#fConocer", "#fCumpleD", "#fCumpleM", "#fCumpleA", "#fFechas", "#fEtiquetas"].forEach(s => $(s).addEventListener("input", () => guardarFicha(fichaId)));
+
+$("#fCumpleD").innerHTML = `<option value="">Día</option>` + Array.from({ length: 31 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join("");
+$("#fCumpleM").innerHTML = `<option value="">Mes</option>` + MESES.map((m, i) => `<option value="${i + 1}">${m}</option>`).join("");
+
+function pintarRelFicha(p) {
+  $("#fRel").innerHTML = Object.entries(RELACIONES).map(([k, r]) =>
+    `<button data-r="${k}" class="${(p.relaciones || []).includes(k) ? "on" : ""}">${r.icono} ${r.nombre}</button>`).join("");
+}
+$("#fRel").addEventListener("click", e => {
+  const b = e.target.closest("[data-r]"); if (!b) return;
+  const p = personaConFormulario(); if (!p) return;
+  const s = new Set(p.relaciones || []);
+  s.has(b.dataset.r) ? s.delete(b.dataset.r) : s.add(b.dataset.r);
+  p.relaciones = [...Object.keys(RELACIONES).filter(k => s.has(k)), ...[...s].filter(k => !RELACIONES[k])];
+  pintarRelFicha(p); guardar("personas", p);
+});
+
+function renderEventosFicha(p) {
+  const hoy = hoy0();
+  const evs = fechasDe(p).filter(f => f.tipo === "evento").map(f => {
+    const prox = proximaOcurrencia(f, hoy);
+    return { f, dt: prox || new Date(f.y, f.m - 1, f.d), pasado: !prox };
+  }).sort((a, b) => (a.pasado - b.pasado) || (a.pasado ? b.dt - a.dt : a.dt - b.dt));
+  $("#fEventos").innerHTML = evs.length ? evs.map(({ f, dt, pasado }) => `<div class="ev ${pasado ? "pasado" : ""}">
+      <span class="ev-f">${fmtFecha(dt)}</span>
+      <span class="ev-t">${esc(f.ev.texto)}${f.anual ? `<span class="badge">cada año</span>` : ""} <span class="muted" style="font-size:.8rem">· ${enDias(diasEntre(hoy, dt))}</span></span>
+      <button class="x" data-ev-del="${f.ev.id}" aria-label="Borrar">🗑</button></div>`).join("")
+    : `<div class="muted" style="margin-top:6px">Exámenes, entrevistas, viajes, una mudanza… para acordarte de preguntar.</div>`;
+}
+$("#fAddEv").addEventListener("click", () => {
+  const fecha = $("#fEvFecha").value, texto = $("#fEvTexto").value.trim();
+  if (!fecha || !texto) return toast("Pon la fecha y qué pasa");
+  const p = personaConFormulario(); if (!p) return;
+  p.eventos = [...(p.eventos || []), { id: nuevoId(), fecha, texto, anual: $("#fEvAnual").checked }];
+  guardar("personas", p);
+  $("#fEvFecha").value = ""; $("#fEvTexto").value = ""; $("#fEvAnual").checked = false;
+});
+$("#fEvTexto").addEventListener("keydown", e => { if (e.key === "Enter") $("#fAddEv").click(); });
+$("#fEventos").addEventListener("click", e => {
+  const b = e.target.closest("[data-ev-del]"); if (!b) return;
+  if (!confirm("¿Borrar esta fecha?")) return;
+  const p = personaConFormulario(); p.eventos = (p.eventos || []).filter(ev => ev.id !== b.dataset.evDel); guardar("personas", p);
+});
 
 function pintarSeg(cont, eje, valor) {
   $(cont).innerHTML = ESCALAS[eje].corto.map((t, i) =>
@@ -711,7 +1017,10 @@ function abrirFicha(id) {
   $("#fNombre").value = p.nombre || "";
   $("#fImportante").value = p.importante || "";
   $("#fConocer").value = p.conocer || "";
-  $("#fCumple").value = p.cumple || "";
+  const c = cumpleDe(p);
+  $("#fCumpleD").value = c ? c.d : ""; $("#fCumpleM").value = c ? c.m : ""; $("#fCumpleA").value = c && c.a ? c.a : "";
+  $("#fCumpleViejo").textContent = !c && p.cumple ? `Antes ponía «${p.cumple}». Elige día y mes.` : "";
+  $("#fEvFecha").value = ""; $("#fEvTexto").value = ""; $("#fEvAnual").checked = false;
   $("#fFechas").value = p.fechas || "";
   $("#fEtiquetas").value = (p.etiquetas || []).join(", ");
   $("#fNuevaNota").value = ""; $("#fApTexto").value = "";
@@ -730,6 +1039,8 @@ let notaEditando = null;
 function renderFichaDinamica() {
   const p = datos.personas.get(fichaId);
   if (!p) { ficha.close(); return; }
+  pintarRelFicha(p);
+  renderEventosFicha(p);
   const notas = [...(p.notas || [])].sort((a, b) => b.ts - a.ts);
   $("#fNotas").innerHTML = notas.length ? notas.map(n => notaEditando === n.id
     ? `<div class="nota"><textarea id="fEditTxt" rows="3">${esc(n.texto)}</textarea>
