@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Entrenador Kegel</title>
+<meta name="theme-color" content="#14171c">
+<style>
+  :root{
+    --bg:#14171c; --panel:#1d2128; --panel2:#262b34; --line:#323844;
+    --text:#e9ecf1; --muted:#9aa3b2;
+    --contract:#ff7a59; --pulse:#ffb347; --rest:#4fc3a1; --prep:#7aa7ff;
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.45}
+  button{font:inherit;color:inherit;cursor:pointer}
+  .wrap{max-width:760px;margin:0 auto;padding:20px 16px 60px}
+  header h1{font-size:1.5rem;margin:6px 0 4px}
+  header p{color:var(--muted);margin:0 0 18px;font-size:.95rem}
+  details.week{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);margin-bottom:12px;overflow:hidden}
+  details.week>summary{list-style:none;padding:14px 16px;font-weight:650;display:flex;justify-content:space-between;align-items:center;cursor:pointer}
+  details.week>summary::-webkit-details-marker{display:none}
+  details.week>summary::after{content:"▾";color:var(--muted);transition:transform .2s}
+  details.week[open]>summary::after{transform:rotate(180deg)}
+  .days{padding:0 16px 14px}
+  .day{margin-top:8px}
+  .day h4{margin:6px 0;font-size:.85rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+  .routines{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}
+  .rbtn{display:block;text-align:left;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;transition:border-color .15s,transform .1s}
+  .rbtn:hover{border-color:var(--prep)}
+  .rbtn:active{transform:scale(.98)}
+  .rbtn b{display:flex;justify-content:space-between;font-size:.95rem}
+  .rbtn small{color:var(--muted);font-size:.8rem;display:block;margin-top:2px}
+  .rbtn .done{color:var(--rest);font-weight:700}
+  .note{color:var(--muted);font-size:.85rem;margin:6px 0 0}
+
+  /* Entrenador */
+  #trainer{position:fixed;inset:0;background:var(--bg);display:none;flex-direction:column;z-index:10}
+  #trainer.open{display:flex}
+  .tbar{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line)}
+  .tbar .back{background:none;border:1px solid var(--line);border-radius:10px;padding:6px 12px}
+  .tbar .title{flex:1;min-width:0}
+  .tbar .title b{display:block}
+  .tbar .title small{color:var(--muted);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tbar .snd{background:none;border:1px solid var(--line);border-radius:10px;padding:6px 10px}
+  .stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:16px}
+  .ringbox{position:relative;width:min(72vw,320px);aspect-ratio:1}
+  .ringbox svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+  .ring-bg{fill:none;stroke:var(--panel2);stroke-width:8}
+  .ring-fg{fill:none;stroke:var(--prep);stroke-width:8;stroke-linecap:round;transition:stroke .2s}
+  .orb{position:absolute;inset:16%;border-radius:50%;background:var(--prep);opacity:.18;transform:scale(.55);transition:transform .45s ease,background .2s}
+  .center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+  .phase{font-size:clamp(1.4rem,6vw,2rem);font-weight:800;letter-spacing:.03em}
+  .count{font-size:clamp(3rem,16vw,5.5rem);font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+  .hint{color:var(--muted);font-size:.9rem;min-height:1.3em;text-align:center;max-width:420px}
+  .series{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:420px}
+  .series i{width:14px;height:14px;border-radius:50%;background:var(--panel2);border:1px solid var(--line)}
+  .series i.on{background:var(--rest);border-color:var(--rest)}
+  .series i.cur{border-color:var(--prep);box-shadow:0 0 0 2px var(--prep) inset}
+  .seriestxt{color:var(--muted);font-variant-numeric:tabular-nums}
+  .controls{display:flex;gap:10px;padding:14px 16px calc(14px + env(safe-area-inset-bottom));border-top:1px solid var(--line)}
+  .controls button{flex:1;padding:14px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);font-weight:700;font-size:1.05rem}
+  .controls .start{background:var(--rest);border-color:var(--rest);color:#0d1a15}
+  .free{display:none;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap}
+  .free label{display:flex;gap:6px;align-items:center;color:var(--muted)}
+  .free input{width:64px;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font:inherit}
+
+  .is-contract .ring-fg{stroke:var(--contract)} .is-contract .orb{background:var(--contract);transform:scale(1)}
+  .is-pulse .ring-fg{stroke:var(--pulse)} .is-pulse .orb{background:var(--pulse)}
+  .is-rest .ring-fg{stroke:var(--rest)} .is-rest .orb{background:var(--rest);transform:scale(.55)}
+  .is-prep .ring-fg{stroke:var(--prep)} .is-prep .orb{background:var(--prep)}
+  .is-contract .phase{color:var(--contract)} .is-pulse .phase{color:var(--pulse)}
+  .is-rest .phase{color:var(--rest)} .is-prep .phase{color:var(--prep)}
+  .orb.beat{transform:scale(1)!important;transition:transform .12s ease}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>Entrenador Kegel</h1>
+    <p>Programa de 4 semanas: empieza suave, pasa a entrenar a diario o casi a diario y termina con los ejercicios cíclicos para seguir por tu cuenta. Escucha a tu cuerpo y descansa cuando lo necesites.</p>
+  </header>
+  <main id="index"></main>
+  <p class="note">Toca una rutina para abrir el entrenador. Las rutinas que completes hoy salen con ✓.</p>
+</div>
+
+<section id="trainer" aria-live="polite">
+  <div class="tbar">
+    <button class="back" id="back">← Volver</button>
+    <div class="title"><b id="tName"></b><small id="tDesc"></small></div>
+    <button class="snd" id="snd" title="Sonido">🔊</button>
+  </div>
+  <div class="stage" id="stage">
+    <div class="ringbox">
+      <div class="orb" id="orb"></div>
+      <svg viewBox="0 0 100 100"><circle class="ring-bg" cx="50" cy="50" r="45"/><circle class="ring-fg" id="ring" cx="50" cy="50" r="45" stroke-dasharray="282.74" stroke-dashoffset="0"/></svg>
+      <div class="center"><div class="phase" id="phase">Listo</div><div class="count" id="count">–</div></div>
+    </div>
+    <div class="hint" id="hint">Pulsa «Iniciar» para comenzar</div>
+    <div class="free" id="free">
+      <label>Contraer <input type="number" id="fC" min="1" max="60" value="3"> s</label>
+      <label>Descansar <input type="number" id="fR" min="1" max="60" value="3"> s</label>
+    </div>
+    <div class="series" id="dots"></div>
+    <div class="seriestxt" id="sTxt"></div>
+  </div>
+  <div class="controls">
+    <button class="start" id="startBtn">Iniciar</button>
+    <button id="stopBtn">Detener</button>
+  </div>
+</section>
+
+<script>
+// ---------- Datos del programa ----------
+// c = contraer y mantener, p = contraer una y otra vez (pulsos), r = descansar
+const R = {
+  S1R1:{steps:[['c',1],['r',5]],series:10}, S1R2:{steps:[['c',1],['r',5]],series:10}, S1R3:{steps:[['c',1],['r',5]],series:10},
+  S1R4:{steps:[['c',2],['r',4],['c',1],['r',5]],series:10},
+  S1R5:{steps:[['c',2],['r',3]],series:10}, S1R6:{steps:[['c',2],['r',2]],series:10},
+  S1R7:{steps:[['c',2],['r',2]],series:10},
+  S1R8:{steps:[['c',3],['r',3],['c',1],['r',3]],series:5},
+  S1R9:{steps:[['c',1],['r',3]],series:10},
+  S2R1:{steps:[['p',7],['r',4]],series:6}, S2R2:{steps:[['p',5],['r',3]],series:10}, S2R3:{steps:[['c',10],['r',15]],series:3},
+  S3R1:{steps:[['c',5],['r',5]],series:10}, S3R2:{steps:[['p',7],['r',2]],series:10}, S3R3:{steps:[['c',15],['r',10]],series:3},
+  S4R1:{steps:[['p',7],['r',2]],series:12}, S4R2:{steps:[['c',5],['r',5]],series:12}, S4R3:{steps:[['c',20],['r',30]],series:5},
+  'Cíclico A':{steps:[['c',1],['r',1]],series:0},
+  'Cíclico B':{steps:null,series:0,free:true},
+  'Cíclico C':{steps:[['c',5],['r',5]],series:0},
+  'Cíclico D':{steps:[['c',1],['r',1],['c',3],['r',1]],series:0},
+  'Cíclico E':{steps:[['c',2],['r',2],['c',3],['r',2],['c',4],['r',2],['c',5],['r',2]],series:0},
+  'Cíclico F':{steps:[['c',10],['r',5]],series:0},
+};
+const PROGRAM = [
+  {week:'Semana 1', days:[['Día 1',['S1R1','S1R2','S1R3']],['Días 2, 3 y 4',['S1R4','S1R5','S1R6']],['Días 5, 6 y 7',['S1R7','S1R8','S1R9']]]},
+  {week:'Semana 2', days:[['Días 1 a 7',['S2R1','S2R2','S2R3']]]},
+  {week:'Semana 3', days:[['Días 1 a 7',['S3R1','S3R2','S3R3']]]},
+  {week:'Semana 4', days:[['Días 1 a 7',['S4R1','S4R2','S4R3']]]},
+  {week:'Ejercicios Cíclicos', days:[['Sin límite de series — para cuando quieras',['Cíclico A','Cíclico B','Cíclico C','Cíclico D','Cíclico E','Cíclico F']]]},
+];
+const LABEL={c:'Contraer',p:'Contraer una y otra vez',r:'Descansar'};
+function describe(r){
+  if(r.free) return 'Tú eliges los tiempos de contraer y descansar';
+  const pairs=r.steps.map(([t,s])=>(t==='c'&&r.steps.some(x=>x[0]==='p')?'Contraer y mantener':LABEL[t])+' '+s+' s');
+  return pairs.join(', ')+(r.series?'. '+r.series+' series':'. Repetición libre');
+}
+
+// ---------- Guardado ligero (✓ de hoy) ----------
+const today=new Date().toISOString().slice(0,10);
+function getDone(){try{return JSON.parse(localStorage.getItem('kegelDone')||'{}')}catch(e){return {}}}
+function markDone(id){try{const d=getDone();d[id]=today;localStorage.setItem('kegelDone',JSON.stringify(d))}catch(e){}}
+
+// ---------- Índice ----------
+function renderIndex(){
+  const done=getDone(); const main=document.getElementById('index'); main.innerHTML='';
+  PROGRAM.forEach((w,i)=>{
+    const det=document.createElement('details'); det.className='week'; if(i===0) det.open=true;
+    det.innerHTML='<summary>'+w.week+'</summary><div class="days"></div>';
+    const days=det.querySelector('.days');
+    w.days.forEach(([dname,ids])=>{
+      const d=document.createElement('div'); d.className='day';
+      d.innerHTML='<h4>'+dname+'</h4><div class="routines"></div>';
+      const box=d.querySelector('.routines');
+      ids.forEach(id=>{
+        const b=document.createElement('button'); b.className='rbtn';
+        const name=id.startsWith('S')?id.replace(/S(\d)R(\d)/,'Rutina $2'):id;
+        b.innerHTML='<b><span>'+name+'</span>'+(done[id]===today?'<span class="done">✓</span>':'')+'</b><small>'+describe(R[id])+'</small>';
+        b.onclick=()=>openTrainer(id, (w.week.startsWith('Semana')?w.week+' · ':'')+name);
+        box.appendChild(b);
+      });
+      days.appendChild(d);
+    });
+    main.appendChild(det);
+  });
+}
+
+// ---------- Sonido ----------
+let soundOn=true, actx=null;
+try{soundOn=localStorage.getItem('kegelSound')!=='off'}catch(e){}
+function beep(freq,dur=0.15,vol=0.25){
+  if(!soundOn) return;
+  try{
+    actx=actx||new (window.AudioContext||window.webkitAudioContext)();
+    const o=actx.createOscillator(), g=actx.createGain();
+    o.type='sine'; o.frequency.value=freq; o.connect(g); g.connect(actx.destination);
+    const t=actx.currentTime; g.gain.setValueAtTime(0.0001,t);
+    g.gain.exponentialRampToValueAtTime(vol,t+0.01); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.start(t); o.stop(t+dur+0.02);
+  }catch(e){}
+}
+function updSnd(){document.getElementById('snd').textContent=soundOn?'🔊':'🔇'}
+
+// ---------- Entrenador ----------
+const $=id=>document.getElementById(id);
+const CIRC=282.74;
+let cur=null, segs=[], segIdx=0, segStart=0, timer=null, running=false, seriesDone=0, lastSec=-1, lastBeat=-1, wakeLock=null;
+
+function buildSegs(r){
+  let steps=r.steps;
+  if(r.free) steps=[['c',Math.max(1,+$('fC').value||3)],['r',Math.max(1,+$('fR').value||3)]];
+  return steps.map(([t,s])=>({t,s}));
+}
+function openTrainer(id,title){
+  cur={id,...R[id]}; $('tName').textContent=title; $('tDesc').textContent=describe(R[id]);
+  $('free').style.display=cur.free?'flex':'none';
+  resetView(); $('trainer').classList.add('open'); history.pushState({t:1},'');
+}
+function closeTrainer(){ stop(); $('trainer').classList.remove('open'); renderIndex(); }
+function setPhase(cls,txt){ const st=$('stage'); st.className='stage '+cls; $('phase').textContent=txt; }
+function drawDots(){
+  const box=$('dots'); box.innerHTML='';
+  if(cur.series){ for(let i=0;i<cur.series;i++){const e=document.createElement('i'); if(i<seriesDone)e.className='on'; else if(i===seriesDone&&running)e.className='cur'; box.appendChild(e);}
+    $('sTxt').textContent='Serie '+Math.min(seriesDone+(running?1:0),cur.series)+' de '+cur.series; }
+  else $('sTxt').textContent='Series: '+seriesDone;
+}
+function resetView(){
+  seriesDone=0; running=false; setPhase('', 'Listo'); $('count').textContent='–';
+  $('ring').style.strokeDashoffset=0; $('hint').textContent='Pulsa «Iniciar» para comenzar';
+  $('startBtn').textContent='Iniciar'; drawDots();
+}
+async function keepAwake(on){
+  try{ if(on&&'wakeLock'in navigator){wakeLock=await navigator.wakeLock.request('screen')} else if(!on&&wakeLock){await wakeLock.release();wakeLock=null} }catch(e){}
+}
+function start(){
+  if(running) return;
+  beep(1,0.01,0.0001); // desbloquea el audio en móvil
+  segs=[{t:'prep',s:3}].concat(buildSegs(cur));
+  seriesDone=0; running=true; segIdx=0; segStart=performance.now(); lastSec=-1; lastBeat=-1;
+  $('startBtn').textContent='Reiniciar'; enterSeg(); keepAwake(true);
+  clearInterval(timer); timer=setInterval(tick,50); drawDots();
+}
+function stop(){
+  running=false; clearInterval(timer); keepAwake(false);
+  setPhase('', 'Detenido'); $('count').textContent='–'; $('ring').style.strokeDashoffset=0;
+  $('hint').textContent='Pulsa «Iniciar» para empezar de nuevo'; $('startBtn').textContent='Iniciar'; drawDots();
+}
+function finish(){
+  running=false; clearInterval(timer); keepAwake(false); markDone(cur.id);
+  setPhase('is-rest','¡Hecho!'); $('count').textContent='✓'; $('ring').style.strokeDashoffset=0;
+  $('hint').textContent='Rutina completada. Buen trabajo.'; $('startBtn').textContent='Repetir';
+  beep(660,0.15); setTimeout(()=>beep(880,0.15),180); setTimeout(()=>beep(1100,0.3),360); drawDots();
+}
+function enterSeg(){
+  const s=segs[segIdx]; lastSec=-1; lastBeat=-1;
+  if(s.t==='prep'){ setPhase('is-prep','Prepárate'); $('hint').textContent='Colócate cómodo y relaja el abdomen'; }
+  else if(s.t==='c'){ setPhase('is-contract','Contrae'); $('hint').textContent=s.s>=5?'Aprieta y mantén. Respira con normalidad':'Aprieta'; beep(880,0.18); }
+  else if(s.t==='p'){ setPhase('is-pulse','Contrae y suelta'); $('hint').textContent='Contracciones rápidas, una por cada pitido'; }
+  else { setPhase('is-rest','Descansa'); $('hint').textContent='Suelta del todo'; beep(440,0.22); }
+}
+function tick(){
+  const s=segs[segIdx], el=(performance.now()-segStart)/1000;
+  if(el>=s.s){
+    segStart+=s.s*1000; segIdx++;
+    if(segIdx>=segs.length){ // fin de una serie
+      seriesDone++;
+      if(cur.series && seriesDone>=cur.series){ finish(); return; }
+      if(cur.free) segs=[{t:'prep',s:0}].concat(buildSegs(cur)); // por si cambias tiempos en marcha
+      segIdx=1; drawDots();
+    }
+    enterSeg(); return;
+  }
+  const left=Math.ceil(s.s-el);
+  if(left!==lastSec){ lastSec=left; $('count').textContent=left; if(s.t==='prep') beep(600,0.08,0.15); }
+  $('ring').style.strokeDashoffset=CIRC*(el/s.s);
+  if(s.t==='p'){ // un pulso por segundo
+    const b=Math.floor(el);
+    if(b!==lastBeat){ lastBeat=b; beep(990,0.07,0.2); const o=$('orb'); o.classList.add('beat'); setTimeout(()=>o.classList.remove('beat'),350); }
+  }
+}
+
+$('startBtn').onclick=()=>{ if(running){ running=false; clearInterval(timer); } start(); };
+$('stopBtn').onclick=stop;
+$('back').onclick=()=>{ if(history.state&&history.state.t) history.back(); else closeTrainer(); };
+window.addEventListener('popstate',()=>{ if($('trainer').classList.contains('open')) closeTrainer(); });
+$('snd').onclick=()=>{ soundOn=!soundOn; try{localStorage.setItem('kegelSound',soundOn?'on':'off')}catch(e){} updSnd(); };
+document.addEventListener('visibilitychange',()=>{ if(running&&document.visibilityState==='visible') keepAwake(true); });
+
+updSnd(); renderIndex();
+</script>
+</body>
+
+</html>
