@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Mucho Abarca">
+<title>Mucho Abarca</title>
+<style>
+:root{
+  --bg:#ffffff; --soft:#f5f5f7; --line:#e5e5ea; --text:#1c1c1e; --muted:#8e8e93;
+  --accent:#007aff; --accent-soft:#e8f1ff; --danger:#ff3b30; --warn:#ff9500; --ok:#34c759;
+  --r:14px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);
+  font:17px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none;padding:0}
+.wrap{max-width:640px;margin:0 auto;padding:0 16px calc(40px + env(safe-area-inset-bottom))}
+.hidden{display:none!important}
+
+/* cabecera */
+header.top{position:sticky;top:0;z-index:5;background:rgba(255,255,255,.88);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);padding:calc(10px + env(safe-area-inset-top)) 0 8px}
+.titlebar{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+h1{font-size:34px;font-weight:700;letter-spacing:-.5px;margin:6px 0 2px}
+.count{color:var(--muted);font-size:15px;margin-bottom:10px}
+.iconbtn{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;color:var(--accent);font-size:22px}
+.iconbtn:active{background:var(--soft)}
+
+/* buscador */
+.search{display:flex;align-items:center;gap:8px;background:var(--soft);border-radius:12px;padding:0 12px;height:42px}
+.search svg{flex:none;color:var(--muted)}
+.search input{flex:1;border:0;background:none;outline:none;height:100%;font-size:17px;min-width:0}
+.search .clear{color:var(--muted);font-size:18px;width:22px;height:22px;border-radius:50%;background:#c7c7cc;color:#fff;font-size:13px;display:grid;place-items:center}
+.hint{color:var(--muted);font-size:13px;margin:6px 4px 0}
+
+/* sugerencias */
+.suggest{margin-top:10px;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.suggest button{display:flex;width:100%;text-align:left;padding:12px 14px;gap:10px;align-items:center;border-top:1px solid var(--line)}
+.suggest button:first-child{border-top:0}
+.suggest button:active{background:var(--soft)}
+.suggest .plus{color:var(--accent);font-weight:600}
+.suggest small{color:var(--muted)}
+
+/* segmentado */
+.seg{display:flex;background:#eeeef0;border-radius:9px;padding:2px;margin:14px 0 10px}
+.seg button{flex:1;height:30px;border-radius:7px;font-size:14px;font-weight:500}
+.seg button.on{background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.12),0 1px 1px rgba(0,0,0,.04)}
+
+/* filtros */
+.chips{display:flex;gap:8px;overflow-x:auto;padding:2px 0 6px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;height:32px;padding:0 12px;border-radius:16px;background:var(--soft);font-size:14px;display:flex;align-items:center;gap:4px;white-space:nowrap;border:0;appearance:none;-webkit-appearance:none}
+select.chip{padding-right:26px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238e8e93' stroke-width='1.5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
+.chip.on{background:var(--accent);color:#fff}
+select.chip.on{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23ffffff' stroke-width='1.5'/%3E%3C/svg%3E")}
+.chip.warn.on{background:var(--warn)}
+
+/* lista */
+.list{margin-top:8px}
+.item{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:12px 2px;border-bottom:1px solid var(--line)}
+.item:active{background:var(--soft)}
+.avatar{flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-size:18px;background:var(--soft)}
+.item .main{flex:1;min-width:0}
+.item .name{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item .sub{color:var(--muted);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--warn);flex:none}
+.chev{color:#c7c7cc;font-size:20px;flex:none}
+.empty{color:var(--muted);text-align:center;padding:50px 20px;font-size:15px}
+
+/* hoja de ficha */
+.sheet{position:fixed;inset:0;z-index:20;background:var(--bg);overflow-y:auto;transform:translateX(100%);transition:transform .28s cubic-bezier(.2,.8,.2,1)}
+.sheet.open{transform:none}
+.sheet header{position:sticky;top:0;z-index:2;background:rgba(255,255,255,.9);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);padding:calc(8px + env(safe-area-inset-top)) 8px 8px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line)}
+.back{color:var(--accent);font-size:17px;display:flex;align-items:center;gap:2px;padding:6px 8px}
+.sheet .wrap{padding-top:10px}
+.bigname{width:100%;border:0;outline:none;font-size:28px;font-weight:700;letter-spacing:-.3px;padding:6px 0;background:none}
+.kind{color:var(--muted);font-size:14px;margin-bottom:6px}
+.group-title{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin:22px 4px 6px}
+.card{background:var(--soft);border-radius:var(--r);overflow:hidden}
+.row{display:flex;align-items:center;gap:10px;padding:0 14px;min-height:46px;border-top:1px solid var(--line)}
+.row:first-child{border-top:0}
+.row label{flex:none;width:118px;font-size:15px;color:var(--text)}
+.row input,.row select,.row textarea{flex:1;min-width:0;border:0;background:none;outline:none;padding:12px 0;font-size:16px;text-align:right}
+.row select{appearance:none;-webkit-appearance:none;text-align-last:right;padding-right:16px;color:var(--muted);
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='12'%3E%3Cpath d='M1 1l5 5-5 5' fill='none' stroke='%23c7c7cc' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right center}
+.row textarea{text-align:left;resize:none;min-height:46px}
+.row.col{flex-direction:column;align-items:stretch;padding-top:10px;padding-bottom:10px;gap:6px}
+.row.col label{width:auto;font-size:13px;color:var(--muted)}
+.row.col textarea,.row.col input{text-align:left;padding:2px 0}
+.switch{position:relative;width:51px;height:31px;flex:none}
+.switch input{opacity:0;width:0;height:0}
+.switch span{position:absolute;inset:0;background:#e9e9eb;border-radius:31px;transition:.2s}
+.switch span:before{content:"";position:absolute;width:27px;height:27px;left:2px;top:2px;background:#fff;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,.2);transition:.2s}
+.switch input:checked+span{background:var(--ok)}
+.switch input:checked+span:before{transform:translateX(20px)}
+.tags{display:flex;flex-wrap:wrap;gap:6px;padding:10px 14px}
+.tag{height:30px;padding:0 11px;border-radius:15px;background:#fff;border:1px solid var(--line);font-size:14px;display:flex;align-items:center;gap:6px}
+.tag.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.tag .x{color:var(--muted);font-size:15px}
+.tag.on .x{color:#fff}
+.addtag{border:0;outline:none;background:none;font-size:14px;min-width:120px;height:30px}
+.notes .note{padding:10px 14px;border-top:1px solid var(--line);display:flex;gap:10px}
+.notes .note:first-child{border-top:0}
+.note time{flex:none;color:var(--muted);font-size:13px;width:70px;padding-top:2px}
+.note p{margin:0;flex:1;white-space:pre-wrap}
+.note button{color:#c7c7cc;font-size:16px;align-self:flex-start}
+.noteadd{display:flex;gap:8px;padding:8px 8px 8px 14px;border-top:1px solid var(--line);align-items:flex-end}
+.noteadd textarea{flex:1;border:0;outline:none;background:none;resize:none;padding:8px 0;font-size:16px;min-height:38px}
+.btn{height:36px;padding:0 14px;border-radius:18px;background:var(--accent);color:#fff;font-weight:600;font-size:15px}
+.btn.ghost{background:var(--accent-soft);color:var(--accent)}
+.btn.danger{background:none;color:var(--danger)}
+.btn:disabled{opacity:.4}
+.actions{display:flex;flex-wrap:wrap;gap:8px;padding:12px 14px}
+.link{color:var(--accent);text-decoration:none}
+.small{font-size:13px;color:var(--muted)}
+.conn-search{position:relative}
+.conn-results{border-top:1px solid var(--line)}
+.conn-results button{display:block;width:100%;text-align:left;padding:10px 14px;border-top:1px solid var(--line)}
+.conn-results button:first-child{border-top:0}
+
+/* login / menú */
+.center{min-height:100vh;display:flex;flex-direction:column;justify-content:center;max-width:360px;margin:0 auto;padding:24px}
+.center h1{text-align:center}
+.center p{text-align:center;color:var(--muted)}
+.field{width:100%;height:48px;border-radius:12px;border:0;background:var(--soft);padding:0 14px;margin-top:10px;outline:none}
+.center .btn{height:48px;border-radius:12px;width:100%;margin-top:14px}
+.err{color:var(--danger);font-size:14px;text-align:center;margin-top:10px;min-height:20px}
+.menu{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.25);display:flex;align-items:flex-end}
+.menu .panel{background:#fff;width:100%;max-width:640px;margin:0 auto;border-radius:16px 16px 0 0;padding:8px 16px calc(20px + env(safe-area-inset-bottom))}
+.menu .panel button{display:block;width:100%;text-align:left;padding:15px 4px;border-bottom:1px solid var(--line);font-size:17px}
+.menu .panel button:last-child{border-bottom:0;color:var(--accent);font-weight:600;text-align:center}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:rgba(28,28,30,.92);color:#fff;padding:10px 16px;border-radius:20px;font-size:14px;z-index:40;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+.banner{background:#fff8e6;color:#8a5a00;font-size:13px;border-radius:10px;padding:8px 12px;margin-top:8px}
+</style>
+</head>
+<body>
+
+<!-- Pantalla de acceso -->
+<section id="login" class="center hidden">
+  <h1>Mucho Abarca</h1>
+  <p>Tu agenda de sitios y conseguidores</p>
+  <input id="email" class="field" type="email" placeholder="Correo" autocomplete="username">
+  <input id="pass" class="field" type="password" placeholder="Contraseña" autocomplete="current-password">
+  <button id="loginBtn" class="btn">Entrar</button>
+  <div id="loginErr" class="err"></div>
+</section>
+
+<!-- App -->
+<section id="app" class="hidden">
+  <header class="top">
+    <div class="wrap" style="padding-bottom:0">
+      <div class="titlebar">
+        <h1>Mucho Abarca</h1>
+        <button class="iconbtn" id="menuBtn" aria-label="Menú">⋯</button>
+      </div>
+      <div class="count" id="count"></div>
+      <div class="search">
+        <svg width="16" height="16" viewBox="0 0 16 16"><circle cx="7" cy="7" r="5.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <input id="q" placeholder="Buscar o apuntar…" autocomplete="off" enterkeyhint="done">
+        <button class="clear hidden" id="qClear" aria-label="Borrar">✕</button>
+      </div>
+      <div class="hint" id="qHint">Escribe «Nombre: nota» y pulsa Intro para apuntar al vuelo.</div>
+      <div id="localBanner" class="banner hidden">Modo local: los datos se guardan solo en este navegador. Pega tu configuración de Firebase en el archivo para sincronizar.</div>
+      <div class="suggest hidden" id="suggest"></div>
+      <div class="seg" id="seg">
+        <button data-v="todo" class="on">Todo</button>
+        <button data-v="persona">Personas</button>
+        <button data-v="lugar">Lugares</button>
+      </div>
+      <div class="chips" id="chips"></div>
+    </div>
+  </header>
+  <div class="wrap">
+    <div class="list" id="list"></div>
+  </div>
+</section>
+
+<!-- Ficha -->
+<section class="sheet" id="sheet" aria-hidden="true">
+  <header>
+    <button class="back" id="backBtn">‹ Volver</button>
+    <span class="small" id="savedLbl"></span>
+  </header>
+  <div class="wrap" id="sheetBody"></div>
+</section>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+/* ============================================================
+   CONFIGURACIÓN
+   Pega aquí la misma configuración de Firebase que usa la percu
+   (proyecto "mis-cosas"). Si la dejas vacía, la app funciona en
+   modo local (solo en este navegador), útil para probar.
+   ============================================================ */
+const firebaseConfig = {
+  apiKey: "",
+  authDomain: "",
+  projectId: "",
+  storageBucket: "",
+  messagingSenderId: "",
+  appId: ""
+};
+const FB_VERSION = "10.12.2";
+
+/* ---------- Catálogos ---------- */
+const SUBTIPOS = {
+  cerrado: ["Bar","Restaurante","Café","Sala","Club","Casa rural","Finca","Local o estudio","Espacio cultural","Otro"],
+  abierto: ["Parque","Playa","Monte o llano","Mirador","Río o lago","Plaza","Rincón","Otro"]
+};
+const SERVICIOS = ["Cocina","Sonido","Electricidad","Baños","Agua","Sombra","Techo / interior","Acceso en coche","Aparcamiento","Admite música","Admite comida propia","Accesible"];
+const RELACION = ["","Conocido","Contacto de trabajo","Amigo","Le debo una","Me debe una","Pendiente de conocer"];
+
+/* ---------- Utilidades ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const norm = s => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().trim();
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+const fmtDate = t => new Date(t).toLocaleDateString("es-ES",{day:"numeric",month:"short",year:"2-digit"});
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove("show"),1800); }
+const isConfigured = !!(firebaseConfig.apiKey && firebaseConfig.projectId);
+
+/* ---------- Almacenamiento (Firebase o local) ---------- */
+let fichas = [];          // estado en memoria
+let store = null;
+
+function localStore(){
+  const KEY="dendrita_local_v1";
+  const read=()=>{ try{return JSON.parse(localStorage.getItem(KEY)||"[]")}catch{return []} };
+  let cb=null;
+  const write=arr=>{ try{localStorage.setItem(KEY,JSON.stringify(arr))}catch{} cb&&cb(arr); };
+  return {
+    subscribe(f){ cb=f; f(read()); },
+    async save(fi){ const a=read(); const i=a.findIndex(x=>x.id===fi.id); if(i>=0)a[i]=fi; else a.push(fi); write(a); },
+    async remove(id){ write(read().filter(x=>x.id!==id)); }
+  };
+}
+
+async function firebaseStore(){
+  const app = await import(`https://www.gstatic.com/firebasejs/${FB_VERSION}/firebase-app.js`);
+  const au  = await import(`https://www.gstatic.com/firebasejs/${FB_VERSION}/firebase-auth.js`);
+  const fs  = await import(`https://www.gstatic.com/firebasejs/${FB_VERSION}/firebase-firestore.js`);
+  const fbApp = app.initializeApp(firebaseConfig);
+  const auth = au.getAuth(fbApp);
+  let db;
+  try { db = fs.initializeFirestore(fbApp,{localCache: fs.persistentLocalCache()}); }
+  catch { db = fs.getFirestore(fbApp); }
+  return { auth, au, fs, db };
+}
+
+/* ---------- Arranque ---------- */
+async function boot(){
+  if(!isConfigured){
+    $("#localBanner").classList.remove("hidden");
+    store = localStore();
+    showApp();
+    return;
+  }
+  const fb = await firebaseStore();
+  $("#loginBtn").onclick = async ()=>{
+    $("#loginErr").textContent="";
+    try{ await fb.au.signInWithEmailAndPassword(fb.auth,$("#email").value.trim(),$("#pass").value); }
+    catch(e){ $("#loginErr").textContent="No se ha podido entrar. Revisa correo y contraseña."; }
+  };
+  $("#pass").addEventListener("keydown",e=>{ if(e.key==="Enter") $("#loginBtn").click(); });
+  fb.au.onAuthStateChanged(fb.auth, user=>{
+    if(!user){ $("#app").classList.add("hidden"); $("#login").classList.remove("hidden"); return; }
+    const col = fb.fs.collection(fb.db,"dendrita",user.uid,"fichas");
+    store = {
+      subscribe(f){ fb.fs.onSnapshot(col, snap=>f(snap.docs.map(d=>d.data())), err=>toast("Error al leer: "+err.code)); },
+      save(fi){ return fb.fs.setDoc(fb.fs.doc(col,fi.id), fi); },
+      remove(id){ return fb.fs.deleteDoc(fb.fs.doc(col,id)); },
+      logout(){ return fb.au.signOut(fb.auth); }
+    };
+    $("#login").classList.add("hidden");
+    showApp();
+  });
+}
+
+function showApp(){
+  $("#app").classList.remove("hidden");
+  store.subscribe(arr=>{
+    fichas = arr;
+    renderAll();
+    // Solo se repinta la ficha abierta si el cambio viene de fuera (otro dispositivo),
+    // para no quitarte el foco mientras escribes.
+    if(openId && current){
+      const f=byId(openId);
+      if(f && (f.actualizado||0) > (current.actualizado||0) && !editing && !saveTimer) renderSheet(f);
+    }
+  });
+}
+
+/* ---------- Estado de la vista ---------- */
+const view = { seg:"todo", q:"", pendientes:false, ciudad:"", subtipo:"", servicio:"", etiqueta:"", clase:"" };
+const byId = id => fichas.find(f=>f.id===id);
+
+function nueva(tipo, nombre){
+  const now=Date.now();
+  const base = { id:uid(), tipo, nombre:nombre.trim(), pendiente:true, creado:now, actualizado:now,
+    ciudad:"", etiquetas:[], conectados:[], notas:[], contacto:"" };
+  if(tipo==="persona") Object.assign(base,{ hace:"", presentadoPor:"", relacion:"" });
+  else Object.assign(base,{ clase:"cerrado", subtipo:"", direccion:"", lat:null, lng:null, capacidad:"", servicios:[], condiciones:"", epoca:"", permisos:"" });
+  return base;
+}
+
+function searchText(f){
+  return norm([f.nombre,f.hace,f.ciudad,f.subtipo,f.direccion,f.contacto,f.presentadoPor,f.condiciones,f.permisos,
+    ...(f.etiquetas||[]),...(f.servicios||[]),...(f.notas||[]).map(n=>n.texto)].join(" "));
+}
+
+function filtered(){
+  const q = norm(parseQuick(view.q).nombre);
+  return fichas.filter(f=>{
+    if(view.seg!=="todo" && f.tipo!==view.seg) return false;
+    if(view.pendientes && !f.pendiente) return false;
+    if(view.ciudad && f.ciudad!==view.ciudad) return false;
+    if(view.etiqueta && !(f.etiquetas||[]).includes(view.etiqueta)) return false;
+    if(view.seg==="lugar"){
+      if(view.clase && f.clase!==view.clase) return false;
+      if(view.subtipo && f.subtipo!==view.subtipo) return false;
+      if(view.servicio && !(f.servicios||[]).includes(view.servicio)) return false;
+    }
+    if(q && !searchText(f).includes(q)) return false;
+    return true;
+  }).sort((a,b)=> (b.actualizado||0)-(a.actualizado||0));
+}
+
+function parseQuick(s){
+  const i = s.indexOf(":");
+  if(i>0) return { nombre:s.slice(0,i).trim(), nota:s.slice(i+1).trim() };
+  return { nombre:s.trim(), nota:"" };
+}
+
+/* ---------- Render principal ---------- */
+function uniq(arr){ return [...new Set(arr.filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es")); }
+
+function renderAll(){ renderCount(); renderChips(); renderList(); renderSuggest(); }
+
+function renderCount(){
+  const p=fichas.filter(f=>f.tipo==="persona").length, l=fichas.length-p;
+  $("#count").textContent = `${p} ${p===1?"persona":"personas"} · ${l} ${l===1?"lugar":"lugares"}`;
+}
+
+function selChip(key,label,options){
+  const v=view[key];
+  return `<select class="chip${v?" on":""}" data-k="${key}"><option value="">${esc(label)}</option>${options.map(o=>`<option ${o===v?"selected":""} value="${esc(o)}">${esc(o)}</option>`).join("")}</select>`;
+}
+
+function renderChips(){
+  const pend = fichas.filter(f=>f.pendiente && (view.seg==="todo"||f.tipo===view.seg)).length;
+  const pool = fichas.filter(f=>view.seg==="todo"||f.tipo===view.seg);
+  let h = `<button class="chip warn${view.pendientes?" on":""}" data-k="pendientes">Por completar${pend?` · ${pend}`:""}</button>`;
+  h += selChip("ciudad","Ciudad",uniq(pool.map(f=>f.ciudad)));
+  if(view.seg==="lugar"){
+    h += selChip("clase","Cerrado / abierto",["cerrado","abierto"]);
+    const subs = view.clase ? SUBTIPOS[view.clase] : [...SUBTIPOS.cerrado,...SUBTIPOS.abierto];
+    h += selChip("subtipo","Tipo",uniq(subs.filter(s=>pool.some(f=>f.subtipo===s))));
+    h += selChip("servicio","Servicio",SERVICIOS.filter(s=>pool.some(f=>(f.servicios||[]).includes(s))));
+  }
+  h += selChip("etiqueta","Etiqueta",uniq(pool.flatMap(f=>f.etiquetas||[])));
+  $("#chips").innerHTML = h;
+  $("#chips").querySelectorAll("select").forEach(s=>s.onchange=()=>{ view[s.dataset.k]=s.value; if(s.dataset.k==="clase") view.subtipo=""; renderChips(); renderList(); });
+  $("#chips").querySelector('[data-k="pendientes"]').onclick=()=>{ view.pendientes=!view.pendientes; renderChips(); renderList(); };
+}
+
+function subLine(f){
+  const bits = f.tipo==="persona" ? [f.hace, f.ciudad] : [f.subtipo || (f.clase==="abierto"?"Aire libre":""), f.ciudad, f.capacidad?`${f.capacidad} pers.`:""];
+  const s = bits.filter(Boolean).join(" · ");
+  if(s) return s;
+  const last = (f.notas||[]).slice(-1)[0];
+  return last ? last.texto : (f.tipo==="persona"?"Persona":"Lugar");
+}
+const icon = f => f.tipo==="persona" ? "👤" : (f.clase==="abierto" ? "🌿" : "🏠");
+
+function renderList(){
+  const arr = filtered();
+  if(!fichas.length){ $("#list").innerHTML = `<div class="empty">Aún no hay nada.<br>Escribe un nombre arriba para crear la primera ficha.</div>`; return; }
+  if(!arr.length){ $("#list").innerHTML = `<div class="empty">Nada coincide con estos filtros.</div>`; return; }
+  $("#list").innerHTML = arr.map(f=>`
+    <button class="item" data-id="${f.id}">
+      <div class="avatar">${icon(f)}</div>
+      <div class="main"><div class="name">${esc(f.nombre)}</div><div class="sub">${esc(subLine(f))}</div></div>
+      ${f.pendiente?'<span class="dot" title="Por completar"></span>':""}
+      <span class="chev">›</span>
+    </button>`).join("");
+  $("#list").querySelectorAll(".item").forEach(b=>b.onclick=()=>openSheet(b.dataset.id));
+}
+
+/* ---------- Buscador y apunte rápido ---------- */
+function exactMatch(nombre){ const n=norm(nombre); return n ? fichas.find(f=>norm(f.nombre)===n) : null; }
+
+function renderSuggest(){
+  const {nombre,nota} = parseQuick(view.q);
+  const box=$("#suggest");
+  $("#qClear").classList.toggle("hidden",!view.q);
+  if(!nombre){ box.classList.add("hidden"); return; }
+  const ex = exactMatch(nombre);
+  let h="";
+  if(ex){
+    h += `<button data-act="note" data-id="${ex.id}"><span>${icon(ex)}</span><span style="flex:1"><b>${esc(ex.nombre)}</b><br><small>${nota?`Añadir nota: «${esc(nota)}»`:"Abrir ficha"}</small></span></button>`;
+  } else {
+    const first = view.seg==="lugar" ? ["lugar","persona"] : ["persona","lugar"];
+    first.forEach(t=>{
+      h += `<button data-act="new" data-t="${t}"><span class="plus">＋</span><span style="flex:1">Crear ${t==="persona"?"persona":"lugar"} <b>«${esc(nombre)}»</b>${nota?`<br><small>con la nota «${esc(nota)}»</small>`:""}</span></button>`;
+    });
+  }
+  box.innerHTML=h; box.classList.remove("hidden");
+  box.querySelectorAll("button").forEach(b=>b.onclick=()=>quick(b.dataset.act,b.dataset.t,b.dataset.id));
+}
+
+async function quick(act,tipo,id){
+  const {nombre,nota} = parseQuick(view.q);
+  let f;
+  if(act==="note"){ f = structuredClone(byId(id)); }
+  else { f = nueva(tipo,nombre); }
+  if(nota){ f.notas.push({t:Date.now(),texto:nota}); f.actualizado=Date.now(); }
+  if(act==="new" || nota){ await store.save(f); toast(act==="new" ? "Ficha creada" : "Nota añadida"); }
+  view.q=""; $("#q").value=""; renderAll();
+  if(!(act==="note" && nota)) openSheet(f.id, f);
+}
+
+$("#q").addEventListener("input",e=>{ view.q=e.target.value; renderSuggest(); renderList(); });
+$("#q").addEventListener("keydown",e=>{
+  if(e.key!=="Enter") return;
+  e.preventDefault();
+  const {nombre} = parseQuick(view.q); if(!nombre) return;
+  const ex = exactMatch(nombre);
+  if(ex) quick("note",null,ex.id);
+  else quick("new", view.seg==="lugar"?"lugar":"persona");
+});
+$("#qClear").onclick=()=>{ view.q=""; $("#q").value=""; renderAll(); $("#q").focus(); };
+$("#seg").querySelectorAll("button").forEach(b=>b.onclick=()=>{
+  $("#seg").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));
+  view.seg=b.dataset.v; if(view.seg!=="lugar"){ view.clase=""; view.subtipo=""; view.servicio=""; }
+  renderAll();
+});
+
+/* ---------- Ficha ---------- */
+let openId=null, current=null, editing=false, saveTimer=null;
+
+function openSheet(id, fresh){
+  openId=id; current = structuredClone(fresh || byId(id));
+  if(!current) return;
+  renderSheet(current);
+  $("#sheet").classList.add("open"); $("#sheet").setAttribute("aria-hidden","false");
+  $("#sheet").scrollTop=0;
+  history.pushState({sheet:id},"");
+}
+function closeSheet(){
+  flushSave();
+  $("#sheet").classList.remove("open"); $("#sheet").setAttribute("aria-hidden","true");
+  openId=null; current=null;
+}
+$("#backBtn").onclick=()=>{ if(history.state && history.state.sheet) history.back(); else closeSheet(); };
+window.addEventListener("popstate",()=>{ if(openId) closeSheet(); });
+
+function scheduleSave(){
+  current.actualizado=Date.now();
+  $("#savedLbl").textContent="Guardando…";
+  clearTimeout(saveTimer); saveTimer=setTimeout(flushSave,600);
+}
+async function flushSave(){
+  if(!saveTimer || !current) return;
+  clearTimeout(saveTimer); saveTimer=null;
+  const toSave = structuredClone(current);
+  try{ await store.save(toSave); $("#savedLbl").textContent="Guardado"; }
+  catch(e){ $("#savedLbl").textContent="Error al guardar"; }
+}
+
+function rowInput(key,label,ph="",type="text"){
+  return `<div class="row"><label for="f_${key}">${label}</label><input id="f_${key}" data-f="${key}" type="${type}" placeholder="${esc(ph)}" value="${esc(current[key])}" ${type==="number"?'inputmode="numeric"':""}></div>`;
+}
+function rowArea(key,label,ph=""){
+  return `<div class="row col"><label for="f_${key}">${label}</label><textarea id="f_${key}" data-f="${key}" rows="2" placeholder="${esc(ph)}">${esc(current[key])}</textarea></div>`;
+}
+function rowSelect(key,label,opts){
+  return `<div class="row"><label for="f_${key}">${label}</label><select id="f_${key}" data-f="${key}">${opts.map(o=>`<option ${o===current[key]?"selected":""} value="${esc(o)}">${esc(o||"—")}</option>`).join("")}</select></div>`;
+}
+function contactLinks(c){
+  if(!c) return "";
+  const out=[];
+  const phone = c.replace(/[^\d+]/g,"");
+  if(phone.replace(/\D/g,"").length>=9){
+    const p = phone.startsWith("+")?phone.slice(1):(phone.length===9?"34"+phone:phone);
+    out.push(`<a class="link" href="tel:${esc(phone)}">Llamar</a>`,`<a class="link" target="_blank" rel="noopener" href="https://wa.me/${esc(p)}">WhatsApp</a>`);
+  }
+  const ig = c.match(/@([A-Za-z0-9._]{2,30})/);
+  if(ig) out.push(`<a class="link" target="_blank" rel="noopener" href="https://instagram.com/${esc(ig[1])}">Instagram</a>`);
+  const mail = c.match(/[^\s@]+@[^\s@]+\.[^\s@]+/);
+  if(mail) out.push(`<a class="link" href="mailto:${esc(mail[0])}">Correo</a>`);
+  return out.length ? `<div class="actions" style="padding-top:0">${out.join(" · ")}</div>` : "";
+}
+
+function renderSheet(f){
+  current = current && current.id===f.id && editing ? current : structuredClone(f);
+  const c = current;
+  const isP = c.tipo==="persona";
+  let h = `
+    <input class="bigname" data-f="nombre" value="${esc(c.nombre)}" aria-label="Nombre">
+    <div class="kind">${isP?"Persona":"Lugar"} · creada ${fmtDate(c.creado)}</div>
+
+    <div class="card"><div class="row"><label>Por completar</label><span style="flex:1"></span>
+      <label class="switch" style="width:51px"><input type="checkbox" id="f_pend" ${c.pendiente?"checked":""}><span style="background:${c.pendiente?"var(--warn)":""}"></span></label></div></div>`;
+
+  if(isP){
+    h += `<div class="group-title">Datos</div><div class="card">
+      ${rowInput("hace","Qué hace","Negocio, oficio, qué consigue")}
+      ${rowInput("ciudad","Ciudad o zona","Murcia")}
+      ${rowInput("contacto","Contacto","Teléfono, @instagram, correo")}
+      ${rowInput("presentadoPor","Me lo presentó","")}
+      ${rowSelect("relacion","Relación",RELACION)}
+    </div>${contactLinks(c.contacto)}`;
+  } else {
+    const subs = SUBTIPOS[c.clase||"cerrado"];
+    h += `<div class="group-title">Lugar</div><div class="card">
+      <div class="row"><label>Clase</label><select data-f="clase"><option value="cerrado" ${c.clase==="cerrado"?"selected":""}>Cerrado o con dueño</option><option value="abierto" ${c.clase==="abierto"?"selected":""}>Abierto / aire libre</option></select></div>
+      ${rowSelect("subtipo","Tipo",["",...subs])}
+      ${rowInput("ciudad","Ciudad o zona","Murcia")}
+      ${rowInput("direccion","Dirección","O cómo llegar")}
+      ${rowInput("capacidad","Capacidad","Nº de personas","number")}
+      ${rowInput("contacto","Contacto","Teléfono, @instagram, correo")}
+    </div>${contactLinks(c.contacto)}
+    <div class="card" style="margin-top:10px"><div class="actions">
+      <button class="btn ghost" id="geoBtn">📍 Guardar mi ubicación</button>
+      ${c.lat!=null?`<a class="btn ghost" style="display:inline-flex;align-items:center;text-decoration:none" target="_blank" rel="noopener" href="https://www.google.com/maps?q=${c.lat},${c.lng}">Abrir en Maps</a><button class="btn danger" id="geoDel">Quitar</button>`:""}
+    </div>${c.lat!=null?`<div class="small" style="padding:0 14px 12px">${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}</div>`:""}</div>
+
+    <div class="group-title">Servicios</div>
+    <div class="card"><div class="tags">${SERVICIOS.map(s=>`<button class="tag ${(c.servicios||[]).includes(s)?"on":""}" data-serv="${esc(s)}">${esc(s)}</button>`).join("")}</div></div>
+
+    <div class="group-title">Condiciones</div><div class="card">
+      ${rowArea("condiciones","Precio y condiciones","Gratis si consumís, alquiler 100 €, deja traer música…")}
+      ${rowArea("epoca","Mejor época u horario","Primavera, tardes, solo fines de semana…")}
+      ${rowArea("permisos","Permisos","¿Hace falta permiso municipal? ¿Zona protegida?")}
+    </div>`;
+  }
+
+  // Etiquetas
+  h += `<div class="group-title">Etiquetas</div><div class="card"><div class="tags">
+    ${(c.etiquetas||[]).map(t=>`<span class="tag">${esc(t)} <button class="x" data-deltag="${esc(t)}">✕</button></span>`).join("")}
+    <input class="addtag" id="addTag" placeholder="+ añadir (Intro)" list="tagList">
+    <datalist id="tagList">${uniq(fichas.flatMap(x=>x.etiquetas||[])).filter(t=>!(c.etiquetas||[]).includes(t)).map(t=>`<option value="${esc(t)}">`).join("")}</datalist>
+  </div></div>`;
+
+  // Conectado con
+  const conns = (c.conectados||[]).map(byId).filter(Boolean);
+  h += `<div class="group-title">Conectado con</div><div class="card">
+    ${conns.length?`<div class="tags">${conns.map(x=>`<span class="tag"><button data-goto="${x.id}">${icon(x)} ${esc(x.nombre)}</button><button class="x" data-delconn="${x.id}">✕</button></span>`).join("")}</div>`:""}
+    <div class="row"><input id="connQ" placeholder="Buscar persona o lugar para conectar…" style="text-align:left"></div>
+    <div class="conn-results" id="connRes"></div>
+  </div>`;
+
+  // Notas
+  const notas = [...(c.notas||[])].map((n,i)=>({...n,i})).reverse();
+  h += `<div class="group-title">Notas</div><div class="card notes">
+    <div class="noteadd"><textarea id="noteTxt" rows="1" placeholder="Nueva nota…"></textarea><button class="btn" id="noteAdd">Añadir</button></div>
+    ${notas.map(n=>`<div class="note"><time>${fmtDate(n.t)}</time><p>${esc(n.texto)}</p><button data-delnote="${n.i}" aria-label="Borrar nota">✕</button></div>`).join("")}
+  </div>`;
+
+  h += `<div class="actions" style="justify-content:center;margin-top:24px"><button class="btn danger" id="delBtn">Borrar ficha</button></div>`;
+
+  $("#sheetBody").innerHTML = h;
+  $("#savedLbl").textContent="";
+  bindSheet();
+}
+
+function bindSheet(){
+  const body=$("#sheetBody");
+  body.querySelectorAll("[data-f]").forEach(el=>{
+    const ev = el.tagName==="SELECT" ? "change" : "input";
+    el.addEventListener("focus",()=>editing=true);
+    el.addEventListener("blur",()=>{ editing=false; flushSave(); });
+    el.addEventListener(ev,()=>{
+      const k=el.dataset.f;
+      current[k] = el.type==="number" ? (el.value===""?"":Number(el.value)) : el.value;
+      if(k==="clase"){ current.subtipo=""; scheduleSave(); renderSheet(current); return; }
+      if(k==="contacto" && ev==="input"){ /* los enlaces se refrescan al salir */ }
+      scheduleSave();
+    });
+  });
+  $("#f_pend").onchange=e=>{ current.pendiente=e.target.checked; scheduleSave(); flushSave(); renderSheet(current); };
+
+  body.querySelectorAll("[data-serv]").forEach(b=>b.onclick=()=>{
+    const s=b.dataset.serv, arr=current.servicios||(current.servicios=[]);
+    const i=arr.indexOf(s); i>=0?arr.splice(i,1):arr.push(s);
+    b.classList.toggle("on"); scheduleSave();
+  });
+
+  const addTag=$("#addTag");
+  addTag.addEventListener("keydown",e=>{
+    if(e.key!=="Enter") return; e.preventDefault();
+    const t=addTag.value.trim().toLowerCase(); if(!t) return;
+    current.etiquetas=current.etiquetas||[];
+    if(!current.etiquetas.includes(t)) current.etiquetas.push(t);
+    scheduleSave(); flushSave(); renderSheet(current); $("#addTag").focus();
+  });
+  addTag.addEventListener("change",()=>{ if(addTag.value && fichas.some(x=>(x.etiquetas||[]).includes(addTag.value))) addTag.dispatchEvent(new KeyboardEvent("keydown",{key:"Enter"})); });
+  body.querySelectorAll("[data-deltag]").forEach(b=>b.onclick=()=>{ current.etiquetas=current.etiquetas.filter(t=>t!==b.dataset.deltag); scheduleSave(); flushSave(); renderSheet(current); });
+
+  // conexiones
+  const connQ=$("#connQ");
+  connQ.addEventListener("input",()=>{
+    const q=norm(connQ.value);
+    const res = q ? fichas.filter(x=>x.id!==current.id && !(current.conectados||[]).includes(x.id) && norm(x.nombre).includes(q)).slice(0,6) : [];
+    $("#connRes").innerHTML = res.map(x=>`<button data-conn="${x.id}">${icon(x)} ${esc(x.nombre)} <span class="small">${esc(subLine(x))}</span></button>`).join("");
+    $("#connRes").querySelectorAll("[data-conn]").forEach(b=>b.onclick=()=>connect(b.dataset.conn,true));
+  });
+  body.querySelectorAll("[data-delconn]").forEach(b=>b.onclick=()=>connect(b.dataset.delconn,false));
+  body.querySelectorAll("[data-goto]").forEach(b=>b.onclick=()=>{ flushSave(); openId=b.dataset.goto; current=structuredClone(byId(b.dataset.goto)); renderSheet(current); $("#sheet").scrollTop=0; });
+
+  // notas
+  const nt=$("#noteTxt");
+  nt.addEventListener("input",()=>{ nt.style.height="auto"; nt.style.height=nt.scrollHeight+"px"; });
+  $("#noteAdd").onclick=()=>{
+    const t=nt.value.trim(); if(!t) return;
+    current.notas=current.notas||[]; current.notas.push({t:Date.now(),texto:t});
+    scheduleSave(); flushSave(); renderSheet(current);
+  };
+  body.querySelectorAll("[data-delnote]").forEach(b=>b.onclick=()=>{
+    if(!confirmLite(b,"¿Borrar?")) return;
+    current.notas.splice(Number(b.dataset.delnote),1); scheduleSave(); flushSave(); renderSheet(current);
+  });
+
+  // ubicación
+  const geo=$("#geoBtn");
+  if(geo) geo.onclick=()=>{
+    if(!navigator.geolocation){ toast("Este navegador no da ubicación"); return; }
+    geo.textContent="Buscando…";
+    navigator.geolocation.getCurrentPosition(p=>{
+      current.lat=p.coords.latitude; current.lng=p.coords.longitude;
+      scheduleSave(); flushSave(); renderSheet(current); toast("Ubicación guardada");
+    },()=>{ geo.textContent="📍 Guardar mi ubicación"; toast("No se ha podido obtener la ubicación"); },{enableHighAccuracy:true,timeout:15000});
+  };
+  const gd=$("#geoDel"); if(gd) gd.onclick=()=>{ current.lat=null; current.lng=null; scheduleSave(); flushSave(); renderSheet(current); };
+
+  // borrar
+  $("#delBtn").onclick=async e=>{
+    if(!confirmLite(e.target,"Pulsa otra vez para borrar")) return;
+    const id=current.id;
+    // quitar de las conexiones de otros
+    for(const other of fichas.filter(x=>(x.conectados||[]).includes(id))){
+      const o=structuredClone(other); o.conectados=o.conectados.filter(z=>z!==id); await store.save(o);
+    }
+    saveTimer=null; await store.remove(id);
+    toast("Ficha borrada");
+    if(history.state && history.state.sheet) history.back(); else closeSheet();
+  };
+}
+
+// confirmación en dos toques, sin diálogos del navegador
+function confirmLite(el,msg){
+  if(el.dataset.armed){ return true; }
+  const old=el.textContent; el.dataset.armed="1"; el.textContent=msg;
+  setTimeout(()=>{ if(el.isConnected){ delete el.dataset.armed; el.textContent=old; } },2500);
+  return false;
+}
+
+async function connect(otherId,add){
+  const other = byId(otherId); if(!other) return;
+  current.conectados=current.conectados||[];
+  const o=structuredClone(other); o.conectados=o.conectados||[];
+  if(add){ if(!current.conectados.includes(otherId)) current.conectados.push(otherId); if(!o.conectados.includes(current.id)) o.conectados.push(current.id); }
+  else { current.conectados=current.conectados.filter(z=>z!==otherId); o.conectados=o.conectados.filter(z=>z!==current.id); }
+  scheduleSave(); await flushSave(); await store.save(o);
+  renderSheet(current);
+}
+
+/* ---------- Menú ---------- */
+$("#menuBtn").onclick=()=>{
+  const m=document.createElement("div"); m.className="menu";
+  m.innerHTML=`<div class="panel">
+    <button data-a="export">Exportar copia (JSON)</button>
+    ${store && store.logout?'<button data-a="logout">Cerrar sesión</button>':""}
+    <button data-a="close">Cerrar</button></div>`;
+  m.onclick=async e=>{
+    const a=e.target.dataset.a;
+    if(e.target===m || a==="close"){ m.remove(); return; }
+    if(a==="export"){
+      const blob=new Blob([JSON.stringify(fichas,null,2)],{type:"application/json"});
+      const url=URL.createObjectURL(blob); const link=document.createElement("a");
+      link.href=url; link.download=`muchoabarca-${new Date().toISOString().slice(0,10)}.json`; link.click();
+      setTimeout(()=>URL.revokeObjectURL(url),1000);
+    }
+    if(a==="logout"){ await store.logout(); location.reload(); }
+    m.remove();
+  };
+  document.body.appendChild(m);
+};
+
+boot();
+</script>
+</body>
+</html>
