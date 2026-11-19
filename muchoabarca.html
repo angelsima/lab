@@ -7,6 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Mucho Abarca">
 <title>Mucho Abarca</title>
+<script src="firebase-config.js"></script>
 <style>
 :root{
   --bg:#ffffff; --soft:#f5f5f7; --line:#e5e5ea; --text:#1c1c1e; --muted:#8e8e93;
@@ -164,7 +165,7 @@ select.chip.on{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www
         <button class="clear hidden" id="qClear" aria-label="Borrar">✕</button>
       </div>
       <div class="hint" id="qHint">Escribe «Nombre: nota» y pulsa Intro para apuntar al vuelo.</div>
-      <div id="localBanner" class="banner hidden">Modo local: los datos se guardan solo en este navegador. Pega tu configuración de Firebase en el archivo para sincronizar.</div>
+      <div id="localBanner" class="banner hidden">Modo local: los datos se guardan solo en este navegador. No se encuentra firebase-config.js junto a este archivo.</div>
       <div class="suggest hidden" id="suggest"></div>
       <div class="seg" id="seg">
         <button data-v="todo" class="on">Todo</button>
@@ -193,18 +194,11 @@ select.chip.on{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www
 <script type="module">
 /* ============================================================
    CONFIGURACIÓN
-   Pega aquí la misma configuración de Firebase que usa la percu
-   (proyecto "mis-cosas"). Si la dejas vacía, la app funciona en
-   modo local (solo en este navegador), útil para probar.
+   Usa la misma configuración que el resto de tu lab:
+   firebase-config.js (proyecto «mis-cosas»), en la misma carpeta.
+   Si no la encuentra, funciona en modo local (solo este navegador).
    ============================================================ */
-const firebaseConfig = {
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: ""
-};
+const firebaseConfig = window.MIS_COSAS_FIREBASE || {};
 const FB_VERSION = "10.12.2";
 
 /* ---------- Catálogos ---------- */
@@ -260,7 +254,13 @@ async function boot(){
     showApp();
     return;
   }
-  const fb = await firebaseStore();
+  let fb;
+  try { fb = await firebaseStore(); }
+  catch(e){
+    $("#login").classList.remove("hidden");
+    $("#loginErr").textContent="No se ha podido conectar con Firebase. Revisa tu conexión y recarga.";
+    return;
+  }
   $("#loginBtn").onclick = async ()=>{
     $("#loginErr").textContent="";
     try{ await fb.au.signInWithEmailAndPassword(fb.auth,$("#email").value.trim(),$("#pass").value); }
@@ -269,7 +269,7 @@ async function boot(){
   $("#pass").addEventListener("keydown",e=>{ if(e.key==="Enter") $("#loginBtn").click(); });
   fb.au.onAuthStateChanged(fb.auth, user=>{
     if(!user){ $("#app").classList.add("hidden"); $("#login").classList.remove("hidden"); return; }
-    const col = fb.fs.collection(fb.db,"dendrita",user.uid,"fichas");
+    const col = fb.fs.collection(fb.db,"users",user.uid,"muchoabarca");
     store = {
       subscribe(f){ fb.fs.onSnapshot(col, snap=>f(snap.docs.map(d=>d.data())), err=>toast("Error al leer: "+err.code)); },
       save(fi){ return fb.fs.setDoc(fb.fs.doc(col,fi.id), fi); },
@@ -277,8 +277,20 @@ async function boot(){
       logout(){ return fb.au.signOut(fb.auth); }
     };
     $("#login").classList.add("hidden");
-    showApp();
+    migrarLocal(store).finally(showApp);
   });
+}
+
+// Si apuntaste fichas en modo local, se suben una vez a Firebase (la copia local no se borra).
+async function migrarLocal(st){
+  const KEY="dendrita_local_v1", FLAG="muchoabarca_migrado_v1";
+  try{
+    if(localStorage.getItem(FLAG)) return;
+    const arr=JSON.parse(localStorage.getItem(KEY)||"[]");
+    for(const f of arr) await st.save(f);
+    localStorage.setItem(FLAG,"1");
+    if(arr.length) toast(`${arr.length} ficha${arr.length===1?"":"s"} del modo local subida${arr.length===1?"":"s"}`);
+  }catch(e){ console.warn("Migración local:",e); }
 }
 
 function showApp(){
