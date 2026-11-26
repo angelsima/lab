@@ -208,8 +208,8 @@ ${x.it.d?`<p class="desc">${esc(x.it.d)}</p>`:''}${x.f.r?`<p class="desc" style=
 </div>
 <label class="f">Letra de ejemplo<textarea data-f="letra" rows="3" placeholder="Una copla tradicional de este estilo">${esc(e.letra)}</textarea></label>
 <div class="cols"><label class="f">Melodía en notación ABC<textarea class="abc" data-f="abc" spellcheck="false" placeholder="Pulsa «Plantilla» para empezar">${esc(e.abc)}</textarea></label>
-<div style="display:flex;flex-direction:column;gap:8px"><div class="row" style="justify-content:flex-start"><button class="btn" type="button" id="b-tpl">Plantilla ABC</button></div>
-<details class="help"><summary>Cómo escribir la melodía</summary><p>Cabecera: <code>M:</code> compás, <code>L:</code> figura base, <code>Q:1/4=80</code> tempo, <code>K:Ephr</code> tono (frigio de Mi = por arriba; <code>Aphr</code> = por medio).</p><p>Notas: <code>C D E F G A B</code> octava central, <code>c d e</code> aguda, <code>B,</code> grave. Duración en múltiplos de L: con <code>L:1/16</code>, <code>E4</code> es una negra y <code>E2</code> una corchea. <code>^F</code> sostenido, <code>_B</code> bemol, <code>=G</code> becuadro, <code>z</code> silencio, <code>-</code> ligadura, <code>|</code> barra, <code>"Am"</code> acorde encima. Para la letra bajo las notas, añade una línea <code>w: ay de mi ...</code>.</p><p>El compás de palmas cuenta en negras: en soleá, cuatro compases de 3/4 hacen un ciclo de 12.</p></details></div></div>
+<div style="display:flex;flex-direction:column;gap:8px"><div class="row" style="justify-content:flex-start"><button class="btn" type="button" id="b-tpl">Plantilla ABC</button><button class="btn" type="button" id="b-mx">Importar de MuseScore</button><input type="file" id="f-mx" accept=".musicxml,.xml,.mxl" hidden></div>
+<details class="help"><summary>Cómo escribir la melodía</summary><p>Cabecera: <code>M:</code> compás, <code>L:</code> figura base, <code>Q:1/4=80</code> tempo, <code>K:Ephr</code> tono (frigio de Mi = por arriba; <code>Aphr</code> = por medio).</p><p>Notas: <code>C D E F G A B</code> octava central, <code>c d e</code> aguda, <code>B,</code> grave. Duración en múltiplos de L: con <code>L:1/16</code>, <code>E4</code> es una negra y <code>E2</code> una corchea. <code>^F</code> sostenido, <code>_B</code> bemol, <code>=G</code> becuadro, <code>z</code> silencio, <code>-</code> ligadura, <code>|</code> barra, <code>"Am"</code> acorde encima. Para la letra bajo las notas, añade una línea <code>w: ay de mi ...</code>.</p><p>El compás de palmas cuenta en negras: en soleá, cuatro compases de 3/4 hacen un ciclo de 12.</p><p>¿Escribes en MuseScore? Exporta con <b>Archivo → Exportar → MusicXML</b> y pulsa «Importar de MuseScore»: se convierte sola. Se toma la primera voz de la parte de voz (o la primera parte); las letras pasan al campo Letra.</p></details></div></div>
 <div class="sheet" id="paper"></div><div class="warn" id="warn"></div>
 <div class="player" aria-label="Reproductor">
 <button class="play" type="button" id="b-play">▶ Escuchar</button>
@@ -241,6 +241,71 @@ function drawSheet(pid='paper',key=sel){
  if(!window.ABCJS){el.innerHTML='<div class="empty">No se ha podido cargar el dibujo de partituras; el reproductor sí funciona.</div>';return}
  const p=loadPrefs();
  try{const t=ABCJS.renderAbc(pid,abc,{responsive:'resize',add_classes:true,visualTranspose:p.semi+p.lect,paddingtop:4,paddingbottom:4});if(t[0]&&t[0].warnings&&t[0].warnings.length)w.textContent='Avisos de la notación: '+t[0].warnings.map(s=>String(s).replace(/<[^>]*>/g,'')).slice(0,2).join(' · ')}catch(err){el.innerHTML='<div class="empty">La notación tiene un error y no se puede dibujar.</div>'}
+}
+
+/* ---- MusicXML (MuseScore) → ABC ---- */
+const KEYN=['Cb','Gb','Db','Ab','Eb','Bb','F','C','G','D','A','E','B','F#','C#'];
+const KEYM=['Abm','Ebm','Bbm','Fm','Cm','Gm','Dm','Am','Em','Bm','F#m','C#m','G#m','D#m','A#m'];
+const SHARPS='FCGDAEB',FLATS='BEADGCF';
+function kids(el,tag){return el?[...el.children].filter(c=>c.tagName===tag):[]}
+function kid(el,tag){return kids(el,tag)[0]||null}
+function txt(el,tag){const k=tag?kid(el,tag):el;return k?k.textContent.trim():''}
+function gcd(a,b){return b?gcd(b,a%b):a}
+function lenStr(n,d){if(n<=0)return '';const g=gcd(n,d);n/=g;d/=g;if(d===1)return n===1?'':String(n);return (n===1?'':n)+'/'+d}
+function mx2abc(doc){
+ const root=doc.documentElement||doc;const parts=kids(root,'part');if(!parts.length)throw new Error('No encuentro ninguna parte en el archivo.');
+ const listNames=kids(kid(root,'part-list'),'score-part').map(sp=>({id:sp.getAttribute('id'),n:txt(sp,'part-name').toLowerCase()}));
+ const pref=listNames.find(p=>/voz|voice|cante|canto|vocal|soprano|flaut|flute|melod/.test(p.n));
+ const part=(pref&&parts.find(p=>p.getAttribute('id')===pref.id))||parts[0];
+ const title=txt(kid(root,'work'),'work-title')||txt(kid(root,'movement-title'));
+ let div=1,fifths=0,mode='major',meter='',tempo=0,keyAcc={},head=null;const bars=[];let lyr=[],harm='';
+ const keyAccOf=f=>{const a={};for(let i=0;i<Math.abs(f);i++)a[(f>0?SHARPS:FLATS)[i]]=f>0?1:-1;return a};
+ for(const m of kids(part,'measure')){
+  let out=[],barAcc={};
+  for(const el of [...m.children]){
+   const tg=el.tagName;
+   if(tg==='attributes'){const d=txt(el,'divisions');if(d)div=+d;const k=kid(el,'key');if(k){fifths=+txt(k,'fifths')||0;mode=(txt(k,'mode')||'major').toLowerCase();keyAcc=keyAccOf(fifths);if(head)out.push(`[K:${mode==='minor'?KEYM[fifths+7]:KEYN[fifths+7]}]`)}const t=kid(el,'time');if(t){const b=txt(t,'beats'),bt=txt(t,'beat-type');if(b&&bt){if(head)out.push(`[M:${b}/${bt}]`);else meter=b+'/'+bt}}}
+   else if(tg==='direction'){const s=kid(el,'sound');const pm=el.getElementsByTagName?el.getElementsByTagName('per-minute')[0]:null;if(!tempo){if(s&&s.getAttribute('tempo'))tempo=Math.round(+s.getAttribute('tempo'));else if(pm)tempo=Math.round(+pm.textContent)}}
+   else if(tg==='sound'&&el.getAttribute('tempo')&&!tempo){tempo=Math.round(+el.getAttribute('tempo'))}
+   else if(tg==='harmony'){const r=kid(el,'root');if(r){const step=txt(r,'root-step'),alt=+txt(r,'root-alter')||0;const kd=kid(el,'kind');const kt=kd?(kd.getAttribute('text')||''):'';const kn=kd?kd.textContent.trim():'';
+     const suf=kt||({minor:'m','minor-seventh':'m7',dominant:'7','major-seventh':'maj7',diminished:'dim',augmented:'+','half-diminished':'m7b5','suspended-fourth':'sus4'}[kn]||'');harm=step+(alt>0?'#':alt<0?'b':'')+suf}}
+   else if(tg==='note'){
+    if(kid(el,'grace')||kid(el,'chord'))continue;const v=txt(el,'voice');if(v&&v!=='1')continue;
+    const dur=+txt(el,'duration')||0;if(!dur)continue;
+    const n16=dur*4,d16=div;const L=lenStr(n16,d16);
+    const ch=harm?`"${harm}"`:'';harm='';
+    if(kid(el,'rest')){out.push(ch+'z'+L);continue}
+    const p=kid(el,'pitch');if(!p)continue;const step=txt(p,'step'),alt=Math.round(+txt(p,'alter')||0),oct=+txt(p,'octave');
+    const bk=step+oct;const cur=barAcc[bk]??keyAcc[step]??0;let acc='';if(alt!==cur){acc={'-2':'__','-1':'_','0':'=','1':'^','2':'^^'}[String(alt)]||'';barAcc[bk]=alt}
+    let nm=oct>=5?step.toLowerCase()+"'".repeat(oct-5):step+','.repeat(Math.max(0,4-oct));
+    const ties=kids(el,'tie').map(t=>t.getAttribute('type'));const tieStart=ties.includes('start');
+    out.push(ch+acc+nm+L+(tieStart?'-':''));
+    for(const ly of kids(el,'lyric')){const t=txt(ly,'text');if(t){const sy=txt(ly,'syllabic');lyr.push(t+(sy==='begin'||sy==='middle'?'-':' '))}break}
+   }
+  }
+  if(!head){head=true}
+  bars.push(out.join(' '));
+ }
+ const key=mode==='minor'?KEYM[fifths+7]:KEYN[fifths+7];
+ let body='';bars.forEach((b,i)=>{body+=b+(i===bars.length-1?' |]':' |')+((i+1)%4===0&&i<bars.length-1?'\n':' ')});
+ const abc=`X:1\nT:${title}\nM:${meter||'4/4'}\nL:1/16\nQ:1/4=${tempo||80}\nK:${key}\n${body.trim()}\n`;
+ const letra=lyr.join('').replace(/- /g,'').replace(/\s+/g,' ').trim();
+ return {abc,letra};
+}
+/* lee .mxl (zip) o .musicxml/.xml y devuelve el texto XML */
+async function readScoreFile(file){
+ const buf=new Uint8Array(await file.arrayBuffer());
+ if(!(buf[0]===0x50&&buf[1]===0x4b))return new TextDecoder().decode(buf);
+ const dv=new DataView(buf.buffer);let eocd=-1;for(let i=buf.length-22;i>=0&&i>buf.length-70000;i--)if(dv.getUint32(i,true)===0x06054b50){eocd=i;break}
+ if(eocd<0)throw new Error('El .mxl parece dañado.');
+ const cnt=dv.getUint16(eocd+10,true);let off=dv.getUint32(eocd+16,true);const ents=[];const dec=new TextDecoder();
+ for(let k=0;k<cnt;k++){const method=dv.getUint16(off+10,true),csize=dv.getUint32(off+20,true),nlen=dv.getUint16(off+28,true),xlen=dv.getUint16(off+30,true),clen=dv.getUint16(off+32,true),loff=dv.getUint32(off+42,true);ents.push({name:dec.decode(buf.slice(off+46,off+46+nlen)),method,csize,loff});off+=46+nlen+xlen+clen}
+ const get=async e=>{const ln=dv.getUint16(e.loff+26,true),lx=dv.getUint16(e.loff+28,true);const data=buf.slice(e.loff+30+ln+lx,e.loff+30+ln+lx+e.csize);if(e.method===0)return dec.decode(data);if(e.method!==8||typeof DecompressionStream==='undefined')throw new Error('Este navegador no abre .mxl: exporta en MusicXML sin comprimir (.musicxml).');const s=new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'));return await new Response(s).text()};
+ let target=null;const cont=ents.find(e=>e.name==='META-INF/container.xml');
+ if(cont){const m=/full-path="([^"]+)"/.exec(await get(cont));if(m)target=ents.find(e=>e.name===m[1])}
+ if(!target)target=ents.find(e=>/\.(musicxml|xml)$/i.test(e.name)&&!e.name.startsWith('META-INF'));
+ if(!target)throw new Error('No encuentro la partitura dentro del .mxl.');
+ return await get(target);
 }
 
 /* ---- ABC → notas para el reproductor ---- */
@@ -333,6 +398,8 @@ document.addEventListener('click',async ev=>{
  if(t.id==='b-ab'){stop();queue=[[cmpKey,'#b-play2']];play(sel,'#b-play');return}
  if(t.id==='b-tpl'){const x=find(sel);const ta=document.querySelector('[data-f=abc]');const cur=ta.value.trim();if(cur&&!cur.startsWith('X:')){ta.value=TPL[compasOf(x)]+cur}else if(!cur){ta.value=TPL[compasOf(x)].replace('T:\n','T:'+x.it.n+'\n')}else{toast('Ya hay una cabecera ABC.');return}setE(sel,'abc',ta.value);drawSheet();refreshStatus();ta.focus();return}
  if(t.id==='b-save'){save();return}
+ if(t.id==='b-mx'){$('#f-mx').click();return}
+ if(t.id==='m-mxok'){closeModal();if(pendingMx)pendingMx();pendingMx=null;return}
  if(t.id==='b-imp'){importar();return}
  if(t.id==='m-copy'){try{await navigator.clipboard.writeText($('#m-json').value);toast('Copiado.')}catch(e){$('#m-json').select();toast('Selecciona el texto y cópialo a mano.')}return}
  if(t.id==='m-load'){try{const d=JSON.parse($('#m-json').value);if(!d||typeof d.items!=='object')throw 0;S={v:1,savedAt:d.savedAt||null,items:d.items,extra:d.extra||{}};closeModal();sel=null;markDirty();renderAll();toast('Importado y guardado en este navegador.')}catch(e){toast('Ese texto no es un archivo de datos válido.')}return}
@@ -343,6 +410,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
 document.addEventListener('change',async e=>{
  const t=e.target;
  if(t.id==='m-file'&&t.files[0]){$('#m-json').value=await t.files[0].text();return}
+ if(t.id==='f-mx'&&t.files[0]){const f=t.files[0];t.value='';importMx(f);return}
  if(t.id==='psel'){palo=t.value;sel=null;stop();renderAll();return}
  if(t.id==='o-bas'){setE(sel,'b',t.checked);refreshStatus();return}
  if(t.id==='o-cmp'){stop();cmpKey=t.value;drawCmp();return}
@@ -355,6 +423,15 @@ document.addEventListener('input',e=>{
  if(t.id==='o-vel'){$('#o-velv').textContent=t.value+'%';return}
  if(t.dataset.f&&t.tagName!=='SELECT'){S.items[sel]={...E(sel),[t.dataset.f]:t.value};markDirty();if(t.dataset.f==='abc'){clearTimeout(drawT);drawT=setTimeout(()=>{drawSheet();refreshStatus()},350)}}
 });
+let pendingMx=null;
+async function importMx(f){
+ try{const xml=await readScoreFile(f);const doc=new DOMParser().parseFromString(xml,'application/xml');if(doc.getElementsByTagName('parsererror').length||!doc.documentElement||!/score-(partwise|timewise)/.test(doc.documentElement.tagName))throw new Error('Ese archivo no es un MusicXML de partitura. Exporta desde MuseScore con Archivo → Exportar → MusicXML.');
+  if(doc.documentElement.tagName==='score-timewise')throw new Error('Exporta la partitura en formato «partwise» (el normal de MuseScore).');
+  const r=mx2abc(doc);const key=sel;
+  const apply=()=>{const e=E(key);S.items[key]={...e,abc:r.abc,...(r.letra&&!e.letra?{letra:r.letra}:{}),...(!e.estado||e.estado==='pendiente'?{estado:'borrador'}:{})};markDirty();renderAll();toast('Partitura importada. Revísala y, si está bien, márcala como Lista.')};
+  if((E(key).abc||'').trim()){pendingMx=apply;openModal(`<h3 id="m-t">¿Sustituir la melodía?</h3><p class="desc">Este estilo ya tiene una melodía escrita. Si importas «${esc(f.name)}», la actual se reemplaza.</p><div class="row"><button class="btn" type="button" data-close>Cancelar</button><button class="btn pri" type="button" id="m-mxok">Sustituir</button></div>`)}else apply()
+ }catch(err){toast(err&&err.message?err.message:'No se pudo leer el archivo.')}
+}
 function refreshStatus(){const tag=$('#sttag');if(tag)tag.textContent=ST_LAB[st(sel)];const sl=document.querySelector('[data-f=estado]');if(sl)sl.value=st(sel);renderTop();renderTabs();renderTree()}
 
 async function load(){
