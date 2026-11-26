@@ -1,9 +1,9 @@
 {
  "v": 1,
- "savedAt": "2026-11-26T12:00:00Z",
+ "savedAt": "2026-11-26T12:39:37.185Z",
  "items": {
   "tangos/triana/tangos-de-triana-nina-de-los-peines": {
-   "estado": "borrador",
+   "estado": "lista",
    "abc": "X:1\nT:Tangos de Triana (borrador)\nC:Transcripción aproximada desde vídeo\nM:4/4\nL:1/16\nQ:1/4=73\nK:C#phr\n\"C#\"z8 z8 | z8 \"E7\"E2 ^D E3 =D E- | \"F#m\"E C6 ^E F3 =E ^D2 E C- | \"C#7\"C8 \"E7\"^D z3 E ^E z2 | z ^D B, z4 =D E ^D3 E D =D E- | \"C#7\"E C7 F3 E ^D3 C- | C4 E ^E G2- \"D\"G A4 G A B- | B A F G A2 F2 \"E7\"E2 D E2 ^E2 z | z G F2 E3 D- \"C#7\"D C B,2 D ^E B,2 | C4 z4 \"C#\"z8 |]",
    "tono": "Do# (cejilla al 4, por medio)",
    "inicio": 1,
