@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cante en melodía · Admin</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/abcjs@6.2.3/dist/abcjs-basic-min.js"></script>
+<style>
+/* VOICE: cuaderno de trabajo de un músico, claro y sin adornos
+   IDEA: el atril de estudio: lista de cantes a la izquierda, partitura abierta a la derecha
+   PICTURE: la partitura viva con su reproductor y el compás de palmas
+   COLOUR and TYPE: papel blanco, tinta casi negra; almagra para tangos, verde para soleá; Archivo + Plex Mono para el ABC
+   LAYOUT: barra superior con progreso, índice lateral, editor; en móvil se apilan */
+:root{color-scheme:light dark;--pal:light-dark(#3b3633,#cfc8c0);--bg:light-dark(#ffffff,#141312);--panel:light-dark(#f6f4f1,#1d1b19);--ink:light-dark(#1c1b19,#efebe6);--muted:light-dark(#5e5a55,#a8a29b);--line:light-dark(#d9d4cd,#3a3632);--tangos:light-dark(#9e2b1f,#e0705f);--solea:light-dark(#1f5c4a,#5fbf9f);--otros:light-dark(#7a5a12,#d7b25a);--amber:light-dark(#a35f00,#e8a640);--ac:var(--tangos)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Archivo,system-ui,sans-serif;overflow-x:clip}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;padding:12px max(2vw,14px);border-bottom:2px solid var(--ink);position:sticky;top:0;background:var(--bg);z-index:5}
+.top h1{margin:0;font-size:20px;font-weight:800;letter-spacing:-.01em;margin-right:auto}
+.top h1 small{display:block;font-size:12px;font-weight:500;color:var(--muted);letter-spacing:0}
+.prog{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.bar{width:140px;height:8px;border-radius:9px;background:var(--line);overflow:hidden;display:flex}
+.bar i{display:block;height:100%}
+.btn{min-height:40px;padding:0 14px;border-radius:8px;border:1px solid var(--line);background:var(--bg);font-weight:600;font-size:14px}
+.btn.pri{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.btn.pri[data-dirty="1"]{background:var(--amber);border-color:var(--amber);color:#fff}
+.btn:disabled{opacity:.5;cursor:default}
+.wrap{display:grid;grid-template-columns:minmax(260px,330px) minmax(0,1fr);min-height:calc(100vh - 66px)}
+aside{border-right:1px solid var(--line);background:var(--panel);padding:14px;display:flex;flex-direction:column;gap:10px;max-height:calc(100vh - 66px);position:sticky;top:66px;overflow:auto}
+.tab{flex:1;min-height:40px;border:1px solid var(--line);background:var(--bg);border-radius:8px;font-weight:700;font-size:13px;padding:2px 6px;line-height:1.15}
+.tab small{display:block;font-weight:500;color:var(--muted);font-size:11px}
+.tab[aria-selected=true]{background:var(--ac);border-color:var(--ac);color:#fff}
+.tab[aria-selected=true] small{color:#fff}
+.filters{display:flex;gap:4px;flex-wrap:wrap}
+.chip{min-height:32px;border:1px solid var(--line);background:var(--bg);border-radius:99px;padding:0 11px;font-size:13px}
+.chip[aria-pressed=true]{border-color:var(--ink);font-weight:700}
+.search{width:100%;min-height:40px;border:1px solid var(--line);border-radius:8px;padding:0 10px;background:var(--bg);font-size:16px}
+.fam{border-top:1px solid var(--line);padding-top:6px}
+.famh{display:flex;align-items:center;gap:8px;width:100%;background:none;border:0;padding:6px 2px;text-align:left}
+.famh b{font-size:14px;flex:1}
+.famh span{font-size:12px;color:var(--muted);white-space:nowrap}
+.famh .tw{width:10px;transition:transform .15s}
+.fam[data-open="0"] .tw{transform:rotate(-90deg)}
+.fam[data-open="0"] ul{display:none}
+ul.items{list-style:none;margin:0 0 6px;padding:0}
+.it{display:flex;align-items:center;gap:8px;width:100%;min-height:34px;border:0;background:none;border-radius:6px;padding:3px 6px;text-align:left;font-size:14px}
+.it:hover{background:var(--bg)}
+.it[aria-current=true]{background:var(--bg);box-shadow:inset 3px 0 0 var(--ac);font-weight:700}
+.it em{font-style:normal;font-size:11px;font-weight:700;color:var(--ac);margin-left:auto}
+.dot{flex:none;width:12px;height:12px;border-radius:50%;border:2px solid var(--muted)}
+.dot.borrador{border-color:var(--amber);background:linear-gradient(90deg,var(--amber) 50%,transparent 50%)}
+.dot.lista{border-color:var(--ac);background:var(--ac)}
+.psel{width:100%;min-height:44px;border:1px solid var(--line);border-radius:8px;background:var(--bg);font-size:16px;font-weight:700;padding:0 10px}
+.bas{flex:none;font-size:10px;font-weight:800;color:var(--ac);border:1px solid var(--ac);border-radius:4px;padding:0 4px;line-height:15px}
+.cmp{border-top:1px dashed var(--line);padding-top:14px;display:flex;flex-direction:column;gap:10px}
+.add{border:1px dashed var(--line);background:none;border-radius:6px;min-height:32px;width:100%;font-size:13px;color:var(--muted)}
+main{padding:18px max(2.4vw,16px) 60px;display:flex;flex-direction:column;gap:16px}
+.crumb{font-size:12px;color:var(--muted);font-weight:600}
+.etit{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 14px}
+.etit h2{margin:0;font-size:clamp(24px,3vw,34px);line-height:1.05;font-weight:800;letter-spacing:-.015em}
+.tag{font-size:12px;font-weight:700;color:var(--ac);border:1px solid var(--ac);border-radius:99px;padding:1px 9px}
+.desc{margin:0;color:var(--muted);max-width:70ch}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:var(--muted)}
+label.f input,label.f select,label.f textarea{font-weight:400;font-size:16px;border:1px solid var(--line);border-radius:8px;background:var(--bg);padding:8px 10px;min-height:42px}
+textarea{resize:vertical;line-height:1.45}
+.abc{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:14px!important;min-height:150px}
+.sheet{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff;color:#111;min-height:120px}
+.sheet .empty{color:#5e5a55;font-size:14px;padding:26px 6px;text-align:center}
+.warn{font-size:12px;color:var(--amber)}
+.player{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--panel)}
+.play{min-width:132px;min-height:44px;border-radius:99px;border:0;background:var(--ac);color:#fff;font-weight:800;font-size:15px;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.tg{display:inline-flex;align-items:center;gap:6px;font-size:14px;min-height:36px}
+.tg input{width:18px;height:18px;accent-color:var(--ac)}
+.sm{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
+.sm select{min-height:36px;border:1px solid var(--line);border-radius:8px;background:var(--bg);font-size:14px;padding:0 6px}
+.sm input[type=range]{width:110px;accent-color:var(--ac)}
+.ph{flex-basis:100%;height:4px;background:var(--line);border-radius:4px;overflow:hidden}
+.ph i{display:block;height:100%;width:0;background:var(--ac)}
+details.help{font-size:14px;border:1px solid var(--line);border-radius:8px;padding:6px 12px}
+details.help summary{cursor:pointer;font-weight:700;min-height:32px;display:flex;align-items:center}
+details.help code{font-family:"IBM Plex Mono",monospace;font-size:13px;background:var(--panel);padding:0 4px;border-radius:4px}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.ov h2{margin:0 0 4px;font-size:30px;font-weight:800;letter-spacing:-.015em}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.card{border:1px solid var(--line);border-radius:10px;padding:14px}
+.card h3{margin:0 0 6px;font-size:17px}
+.big{font-size:34px;font-weight:800;line-height:1}
+.next{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:4px}
+.next button{width:100%;text-align:left;min-height:36px;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:4px 10px;font-size:14px}
+.modal{position:fixed;inset:0;background:rgb(0 0 0/.45);display:none;align-items:center;justify-content:center;padding:16px;z-index:20}
+.modal[data-open="1"]{display:flex}
+.box{background:var(--bg);border-radius:12px;padding:18px;width:min(640px,100%);display:flex;flex-direction:column;gap:10px;max-height:90vh;overflow:auto}
+.box h3{margin:0}
+.box textarea{min-height:200px;border:1px solid var(--line);border-radius:8px;padding:8px;font-family:"IBM Plex Mono",monospace;font-size:13px;background:var(--bg)}
+.row{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+.toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90vw;z-index:30}
+.toast[data-on="1"]{opacity:1}
+.abcjs-chord{font-family:Archivo,sans-serif}
+@media(max-width:820px){.wrap{grid-template-columns:1fr}aside{position:static;max-height:none;border-right:0;border-bottom:1px solid var(--line)}.top{position:static}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header class="top">
+<h1>Cante en melodía <small>Admin · tus cambios se guardan en este navegador</small></h1>
+<div class="prog" id="prog"></div>
+<a class="btn" href="cante.html" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;text-decoration:none">Ver página pública ↗</a>
+<button class="btn" id="b-imp" type="button">Importar</button>
+<button class="btn pri" id="b-save" type="button" data-dirty="0">Datos al día</button>
+</header>
+<div class="wrap">
+<aside>
+<label class="f" style="gap:6px">Palo<select class="psel" id="psel" aria-label="Palo"></select></label>
+<div class="filters" id="filters">
+<button class="chip" type="button" data-fi="todos" aria-pressed="true">Todos</button>
+<button class="chip" type="button" data-fi="pendiente" aria-pressed="false">Pendientes</button>
+<button class="chip" type="button" data-fi="borrador" aria-pressed="false">Borrador</button>
+<button class="chip" type="button" data-fi="lista" aria-pressed="false">Listas</button>
+<button class="chip" type="button" id="b-bas" aria-pressed="false">★ Solo básicos</button>
+</div>
+<input class="search" id="q" type="search" placeholder="Buscar estilo o cantaor" aria-label="Buscar estilo o cantaor">
+<div id="tree"></div>
+</aside>
+<main id="main"></main>
+</div>
+<div class="modal" id="modal" data-open="0" role="dialog" aria-modal="true" aria-labelledby="m-t"><div class="box" id="mbox"></div></div>
+<div class="toast" id="toast" role="status"></div>
+<script id="struct" type="application/json">[{"id": "tonas", "n": "Tonás", "compas": "libre", "fams": [{"id": "tonas", "n": "Tonás", "z": "Sin guitarra", "r": "Cantes a palo seco, sin compás de guitarra.", "items": [{"id": "martinete", "n": "Martinete", "b": 1}, {"id": "debla", "n": "Debla", "b": 1}, {"id": "tona", "n": "Toná"}, {"id": "carcelera", "n": "Carcelera"}]}]}, {"id": "seguiriyas", "n": "Seguiriyas", "compas": "seguiriya", "fams": [{"id": "jerez", "n": "Jerez", "z": "Jerez", "r": "Núcleo principal de la seguiriya.", "items": [{"id": "manuel-molina", "n": "Manuel Molina", "b": 1}, {"id": "paco-la-luz", "n": "Paco la Luz", "b": 1}, {"id": "loco-mateo", "n": "Loco Mateo"}, {"id": "joaquin-lacherna", "n": "Joaquín Lacherna"}, {"id": "frijones", "n": "Frijones"}, {"id": "tio-jose-de-paula", "n": "Tío José de Paula"}, {"id": "manuel-torre", "n": "Manuel Torre"}]}, {"id": "puertos", "n": "Los Puertos", "z": "El Puerto · San Fernando", "r": "La escuela de los Puertos.", "items": [{"id": "el-planeta", "n": "El Planeta"}, {"id": "el-fillo", "n": "El Fillo"}, {"id": "curro-durse", "n": "Curro Durse", "b": 1}, {"id": "enrique-el-mellizo", "n": "Enrique el Mellizo"}, {"id": "el-nitri", "n": "El Nitri"}]}, {"id": "cadiz", "n": "Cádiz", "z": "Cádiz", "r": "", "items": [{"id": "silverio", "n": "Silverio"}, {"id": "francisco-la-perla", "n": "Francisco la Perla"}]}, {"id": "triana", "n": "Triana", "z": "Triana · Sevilla", "r": "Caganchos, Pelaos, Frasco el Colorao.", "items": [{"id": "frasco-el-colorao", "n": "Frasco el Colorao"}, {"id": "cagancho", "n": "Cagancho"}]}, {"id": "derivados", "n": "Cabales, livianas y serranas", "z": "Derivados", "r": "La cabal suele cerrar una tanda de seguiriyas.", "items": [{"id": "cabal-de-silverio", "n": "Cabal de Silverio", "b": 1}, {"id": "liviana", "n": "Liviana"}, {"id": "serrana", "n": "Serrana"}]}]}, {"id": "solea", "n": "Soleá", "compas": "solea", "fams": [{"id": "triana", "n": "Triana", "z": "Triana · Sevilla", "r": "El núcleo más rico y de mayor desarrollo melódico; cuna de la soleá apolá.", "items": [{"id": "el-fillo-1", "n": "El Fillo 1"}, {"id": "el-fillo-2", "n": "El Fillo 2"}, {"id": "paquirri-4", "n": "Paquirri 4", "e": "T", "d": "Casi octava y media; arranca en el 5.º grado."}, {"id": "la-andonda-1", "n": "La Andonda 1", "e": "I", "d": "Primera referencia del cante por soleá."}, {"id": "la-andonda-2", "n": "La Andonda 2", "e": "T", "b": 1}, {"id": "la-andonda-3", "n": "La Andonda 3", "e": "T"}, {"id": "silverio-1", "n": "Silverio 1"}, {"id": "silverio-2", "n": "Silverio 2"}, {"id": "la-serneta-4", "n": "La Serneta 4", "d": "El 4 usa el 5.º grado rebajado."}, {"id": "la-serneta-7", "n": "La Serneta 7"}, {"id": "ramon-el-ollero", "n": "Ramón el Ollero", "e": "I"}, {"id": "enrique-ortega", "n": "Enrique Ortega"}, {"id": "santamaria", "n": "Santamaría", "e": "T"}, {"id": "jose-lorente", "n": "José Lorente", "e": "I"}, {"id": "manuel-cagancho-1", "n": "Manuel Cagancho 1", "e": "T"}, {"id": "manuel-cagancho-2", "n": "Manuel Cagancho 2", "e": "T"}, {"id": "el-portugues-1", "n": "El Portugués 1"}, {"id": "el-portugues-2", "n": "El Portugués 2"}, {"id": "ribalta", "n": "Ribalta"}, {"id": "francisco-amaya", "n": "Francisco Amaya"}, {"id": "pinea", "n": "Pinea", "e": "T/C"}, {"id": "jose-yllanda-1", "n": "José Yllanda 1"}, {"id": "jose-yllanda-2", "n": "José Yllanda 2", "e": "T"}, {"id": "jose-yllanda-3", "n": "José Yllanda 3"}, {"id": "rafael-el-moreno-1", "n": "Rafael el Moreno 1"}, {"id": "el-machango", "n": "El Machango", "e": "I"}, {"id": "el-quino", "n": "El Quino", "e": "T"}, {"id": "noriega", "n": "Noriega", "e": "I"}, {"id": "pepe-el-de-la-matrona-2", "n": "Pepe el de la Matrona 2", "e": "T"}, {"id": "el-sordillo-1", "n": "El Sordillo 1"}, {"id": "el-sordillo-2", "n": "El Sordillo 2", "e": "I"}, {"id": "charamusco", "n": "Charamusco", "e": "T"}, {"id": "manolo-oliver", "n": "Manolo Oliver", "e": "T"}, {"id": "antonio-mairena-2", "n": "Antonio Mairena 2", "e": "T"}, {"id": "antonio-ballesteros", "n": "Antonio Ballesteros", "e": "T"}, {"id": "anonimas-de-triana-1", "n": "Anónimas de Triana 1", "e": "I"}, {"id": "anonimas-de-triana-2", "n": "Anónimas de Triana 2", "e": "T"}, {"id": "anonimas-de-triana-3", "n": "Anónimas de Triana 3", "e": "T"}, {"id": "anonimas-de-triana-4", "n": "Anónimas de Triana 4", "e": "T"}, {"id": "anonimas-de-triana-5", "n": "Anónimas de Triana 5", "e": "I"}, {"id": "solea-apola", "n": "Soleá apolá", "d": "Mezcla de polo y soleá."}]}, {"id": "alcala", "n": "Alcalá y Marchena", "z": "Alcalá de Guadaíra", "r": "Hoy las más cantadas; la saga de los Gordos.", "items": [{"id": "joaquin-el-de-la-paula-1", "n": "Joaquín el de la Paula 1", "e": "I", "d": "Saga de los Gordos; la rehízo casi como música nueva.", "b": 1}, {"id": "joaquin-el-de-la-paula-2", "n": "Joaquín el de la Paula 2", "e": "T/C"}, {"id": "joaquin-el-de-la-paula-3", "n": "Joaquín el de la Paula 3", "e": "C"}, {"id": "joaquin-el-de-la-paula-4", "n": "Joaquín el de la Paula 4", "e": "T"}, {"id": "agustin-talega-1", "n": "Agustín Talega 1", "e": "T"}, {"id": "agustin-talega-2", "n": "Agustín Talega 2", "e": "T/C"}, {"id": "la-roezna-1", "n": "La Roezna 1", "e": "I"}, {"id": "la-roezna-2", "n": "La Roezna 2", "e": "T/C"}, {"id": "la-jilica-1", "n": "La Jilica 1", "e": "T", "d": "De Marchena."}, {"id": "la-jilica-2", "n": "La Jilica 2", "e": "T/C"}, {"id": "juan-talega", "n": "Juan Talega", "e": "I"}, {"id": "antonio-mairena-1", "n": "Antonio Mairena 1", "e": "I"}, {"id": "joselero", "n": "Joselero"}]}, {"id": "utrera", "n": "Utrera", "z": "Utrera", "r": "Casi todos los estilos son de La Serneta.", "items": [{"id": "la-serneta-1", "n": "La Serneta 1", "d": "Jerezana afincada en Utrera; casi todos los estilos de Utrera son suyos."}, {"id": "la-serneta-2", "n": "La Serneta 2", "e": "I"}, {"id": "la-serneta-3", "n": "La Serneta 3", "e": "T", "b": 1}, {"id": "la-serneta-5", "n": "La Serneta 5", "e": "T"}, {"id": "la-serneta-6", "n": "La Serneta 6", "e": "T/C"}, {"id": "juan-breva", "n": "Juan Breva", "e": "I"}]}, {"id": "jerez", "n": "Jerez", "z": "Jerez", "r": "Frijones creó estilo propio.", "items": [{"id": "frijones-1", "n": "Frijones 1", "e": "T", "d": "Primo de La Serneta.", "b": 1}, {"id": "frijones-2", "n": "Frijones 2", "e": "T"}, {"id": "frijones-3", "n": "Frijones 3", "e": "T"}, {"id": "frijones-4", "n": "Frijones 4", "e": "C"}, {"id": "tio-jose-de-paula", "n": "Tío José de Paula"}, {"id": "carapiera", "n": "Carapiera", "d": "Melodía en mayor, cercana a las cantiñas."}, {"id": "teresa-mazzantini", "n": "Teresa Mazzantini", "e": "I"}, {"id": "pepe-torre", "n": "Pepe Torre", "e": "C"}, {"id": "manolo-caracol", "n": "Manolo Caracol"}, {"id": "antonio-mairena-3", "n": "Antonio Mairena 3", "e": "T"}, {"id": "antonio-mairena-4", "n": "Antonio Mairena 4", "e": "C"}, {"id": "tio-borrico", "n": "Tío Borrico", "e": "I"}, {"id": "anonimas-de-jerez", "n": "Anónimas de Jerez"}]}, {"id": "cadiz", "n": "Cádiz y los Puertos", "z": "Cádiz", "r": "El Mellizo, Paquirri el Guanté, Curro Durse…", "items": [{"id": "enrique-el-mellizo-1", "n": "Enrique el Mellizo 1", "e": "I"}, {"id": "enrique-el-mellizo-2", "n": "Enrique el Mellizo 2", "e": "C", "b": 1}, {"id": "enrique-el-mellizo-3", "n": "Enrique el Mellizo 3", "e": "T"}, {"id": "paquirri-el-guante-1", "n": "Paquirri el Guanté 1"}, {"id": "paquirri-el-guante-2", "n": "Paquirri el Guanté 2", "e": "T"}, {"id": "paquirri-el-guante-3", "n": "Paquirri el Guanté 3", "e": "C"}, {"id": "el-morcilla", "n": "El Morcilla", "e": "C"}, {"id": "juan-ramirez", "n": "Juan Ramírez", "e": "I"}, {"id": "pepe-el-de-la-matrona-1", "n": "Pepe el de la Matrona 1"}, {"id": "aurelio-selles", "n": "Aurelio Sellés", "e": "T"}, {"id": "anonimas-de-cadiz", "n": "Anónimas de Cádiz", "e": "T/C"}, {"id": "curro-durse", "n": "Curro Durse", "d": "No figura en el catálogo de Soler."}]}, {"id": "lebrija-cordoba", "n": "Lebrija y Córdoba", "z": "Lebrija · Córdoba", "r": "Juaniquí, llegado de Jerez; Onofre en Córdoba.", "items": [{"id": "juaniqui-1", "n": "Juaniquí 1", "e": "T", "d": "Jerezano asentado en Lebrija. El 4 usa el 5.º grado rebajado.", "b": 1}, {"id": "juaniqui-2", "n": "Juaniquí 2", "e": "T"}, {"id": "juaniqui-3", "n": "Juaniquí 3", "e": "T"}, {"id": "juaniqui-4", "n": "Juaniquí 4"}, {"id": "el-chozas-1", "n": "El Chozas 1", "d": "Lebrija."}, {"id": "el-chozas-2", "n": "El Chozas 2"}, {"id": "onofre-1", "n": "Onofre 1", "d": "Córdoba."}, {"id": "onofre-2", "n": "Onofre 2", "e": "T"}, {"id": "onofre-3", "n": "Onofre 3", "e": "I"}]}]}, {"id": "solea-por-bulerias", "n": "Soleá por bulerías", "compas": "solea", "fams": [{"id": "spb", "n": "Soleá por bulerías", "z": "Utrera · Lebrija · Jerez", "r": "Al golpe o «pa escuchar»: entre la soleá y la bulería.", "items": [{"id": "solea-por-bulerias", "n": "Soleá por bulerías", "b": 1}]}]}, {"id": "bulerias", "n": "Bulerías", "compas": "solea", "fams": [{"id": "bul", "n": "Bulerías", "z": "Por pueblos", "r": "De Cádiz en mayor, de Jerez en modo flamenco, el cuplé en menor.", "items": [{"id": "bulerias-de-jerez", "n": "Bulerías de Jerez", "b": 1}, {"id": "bulerias-de-utrera", "n": "Bulerías de Utrera", "b": 1}, {"id": "bulerias-de-cadiz", "n": "Bulerías de Cádiz", "b": 1}, {"id": "bulerias-de-lebrija", "n": "Bulerías de Lebrija"}, {"id": "bulerias-de-sevilla-y-triana", "n": "Bulerías de Sevilla y Triana"}, {"id": "cuple-por-bulerias", "n": "Cuplé por bulerías"}, {"id": "bulerias-al-golpe", "n": "Bulerías al golpe"}]}]}, {"id": "cantinas", "n": "Alegrías y cantiñas", "compas": "solea", "fams": [{"id": "cant", "n": "Cantiñas", "z": "Cádiz · Utrera · Córdoba", "r": "Familia de doce tiempos, casi siempre en mayor.", "items": [{"id": "alegrias-de-cadiz", "n": "Alegrías de Cádiz", "b": 1}, {"id": "romeras", "n": "Romeras"}, {"id": "caracoles", "n": "Caracoles"}, {"id": "mirabras", "n": "Mirabrás"}, {"id": "cantinas-de-pinini", "n": "Cantiñas de Pinini", "b": 1}, {"id": "alegrias-de-cordoba", "n": "Alegrías de Córdoba"}, {"id": "rosa", "n": "Rosa"}]}]}, {"id": "polo-cana", "n": "Polo y caña", "compas": "solea", "fams": [{"id": "pc", "n": "Polo y caña", "z": "", "r": "", "items": [{"id": "polo", "n": "Polo", "b": 1}, {"id": "cana", "n": "Caña", "b": 1}]}]}, {"id": "tangos", "n": "Tangos", "compas": "tangos", "fams": [{"id": "cadiz", "n": "Cádiz y los Puertos", "z": "Cádiz · San Fernando · Puertos", "r": "Los más conocidos e interpretados. Escala flamenca; admiten coletillas o estribillos.", "items": [{"id": "tangos-del-mellizo", "n": "Tangos del Mellizo", "d": "Enrique el Mellizo, eje de la escuela gaditana; lo transmitió Aurelio Sellés.", "b": 1}, {"id": "tangos-de-los-puertos", "n": "Tangos de los Puertos", "d": "San Fernando, Chiclana, Puerto Real, El Puerto y Sanlúcar."}, {"id": "tangos-de-cadiz-maestros", "n": "Tangos de Cádiz (maestros)", "d": "Aurelio Sellés, Manolo Vargas, Pericón, Beni, Chano Lobato."}]}, {"id": "triana", "n": "Triana y Sevilla", "z": "Triana · Sevilla", "r": "En Triana los tangos se cantaban para el baile (Mairena y Molina).", "items": [{"id": "tangos-de-triana-nina-de-los-peines", "n": "Tangos de Triana (Niña de los Peines)", "d": "Los antiguos de Triana, en escala flamenca.", "b": 1}, {"id": "tangos-del-titi", "n": "Tangos del Titi", "d": "Escala menor; los popularizó Naranjito de Triana. Baile pícaro, casi cómico."}]}, {"id": "jerez", "n": "Jerez", "z": "Santiago · San Miguel", "r": "Frijones hizo aportaciones personales a los tangos; Manuel Torre y El Mojama, primeros intérpretes.", "items": [{"id": "tangos-de-frijones", "n": "Tangos de Frijones"}, {"id": "tangos-de-manuel-torre-y-el-mojama", "n": "Tangos de Manuel Torre y El Mojama"}]}, {"id": "malaga", "n": "Málaga", "z": "Málaga · Perchel", "r": "«Tangos de Málaga» puede ser de la Repompa o del Piyayo.", "items": [{"id": "tangos-de-la-repompa", "n": "Tangos de la Repompa", "d": "Aire muy flamenco, ritmo vivo, 4 o 5 estilos; vienen de La Pirula.", "b": 1}, {"id": "tangos-del-piyayo", "n": "Tangos del Piyayo", "d": "Entre mayor y menor, aire caribeño; ritmo lánguido (Gades).", "b": 1}, {"id": "tangos-del-perchel", "n": "Tangos del Perchel", "d": "Variante de menor entidad."}]}, {"id": "granada", "n": "Granada", "z": "Sacromonte · Albaicín · Vega", "r": "Base de la zambra; de los merengazos, muy rápidos, a los tangos paraos, reposados.", "items": [{"id": "tangos-del-camino", "n": "Tangos del Camino"}, {"id": "tangos-del-cerro", "n": "Tangos del Cerro"}, {"id": "tangos-de-la-vega", "n": "Tangos de la Vega"}, {"id": "tangos-de-illora", "n": "Tangos de Íllora"}, {"id": "tangos-de-la-flor-o-del-candil", "n": "Tangos de la Flor o del Candil", "d": "Merengazos o tango falseta: muy rápidos."}, {"id": "tangos-de-la-moreria", "n": "Tangos de la Morería", "d": "También llamados zambra mora."}, {"id": "tangos-de-la-volaera", "n": "Tangos de la Volaera"}, {"id": "tangos-del-petaco", "n": "Tangos del Petaco"}, {"id": "tangos-picantes", "n": "Tangos picantes"}, {"id": "tangos-paraos", "n": "Tangos paraos", "d": "No se bailan; ritmo muy reposado."}, {"id": "tangos-del-rio", "n": "Tangos del Río"}, {"id": "tangos-canasteros", "n": "Tangos canasteros"}]}, {"id": "extremadura", "n": "Extremadura y otras zonas", "z": "Badajoz · Jaén", "r": "Los extremeños: escala andaluza, sabor antiguo, estribillos en coro.", "items": [{"id": "tangos-extremenos", "n": "Tangos extremeños", "d": "Porrina de Badajoz; Camarón.", "b": 1}, {"id": "tangos-de-jaen", "n": "Tangos de Jaén", "d": "Variante de menor entidad."}]}, {"id": "zambra", "n": "Aires de la zambra", "z": "Sacromonte", "r": "Tres bailes que simbolizan momentos de la boda gitana.", "items": [{"id": "alborea", "n": "Alboreá"}, {"id": "cachucha", "n": "Cachucha"}, {"id": "mosca", "n": "Mosca"}], "compas": "libre"}]}, {"id": "tientos", "n": "Tientos", "compas": "tangos", "fams": [{"id": "tientos", "n": "Tientos", "z": "", "r": "Mismo compás que los tangos, más lentos; gran difusor, Chacón.", "items": [{"id": "tientos", "n": "Tientos", "b": 1}, {"id": "tientos-tangos", "n": "Tientos-tangos"}]}]}, {"id": "ida-y-vuelta", "n": "Ida y vuelta", "compas": "tangos", "fams": [{"id": "iyv", "n": "Cantes de ida y vuelta", "z": "América · Cádiz", "r": "", "items": [{"id": "guajiras", "n": "Guajiras", "b": 1, "c": "solea"}, {"id": "colombianas", "n": "Colombianas"}, {"id": "milonga", "n": "Milonga"}, {"id": "vidalita", "n": "Vidalita"}, {"id": "rumba", "n": "Rumba", "b": 1}]}]}, {"id": "otros-binarios", "n": "Farruca, garrotín y otros", "compas": "tangos", "fams": [{"id": "ob", "n": "Otros palos binarios", "z": "", "r": "Los tanguillos siguen un camino propio.", "items": [{"id": "farruca", "n": "Farruca", "b": 1}, {"id": "garrotin", "n": "Garrotín", "b": 1}, {"id": "marianas", "n": "Marianas"}, {"id": "tanguillos", "n": "Tanguillos", "c": "libre"}]}]}, {"id": "fandangos", "n": "Fandangos", "compas": "ternario", "fams": [{"id": "huelva", "n": "Fandangos de Huelva", "z": "Huelva", "r": "Cada pueblo tiene los suyos.", "items": [{"id": "alosno", "n": "Alosno", "b": 1}, {"id": "calanas", "n": "Calañas"}, {"id": "almonaster", "n": "Almonaster"}, {"id": "encinasola", "n": "Encinasola"}, {"id": "santa-eulalia", "n": "Santa Eulalia"}, {"id": "cerro-de-andevalo", "n": "Cerro de Andévalo"}, {"id": "cabezas-rubias", "n": "Cabezas Rubias"}, {"id": "choqueros-huelva-capital", "n": "Choqueros (Huelva capital)"}]}, {"id": "personales", "n": "Fandangos naturales y personales", "z": "", "r": "Fandangos libres con el sello de un cantaor.", "items": [{"id": "fandango-de-el-gloria", "n": "Fandango de El Gloria", "b": 1}, {"id": "fandango-de-rebollo", "n": "Fandango de Rebollo"}, {"id": "fandango-de-pichichi", "n": "Fandango de Pichichi"}, {"id": "fandango-de-rangel", "n": "Fandango de Rangel"}], "compas": "libre"}]}, {"id": "malaguenas", "n": "Malagueñas", "compas": "libre", "fams": [{"id": "mal", "n": "Malagueñas", "z": "Málaga · Cádiz", "r": "De las antiguas, más cerca del fandango, a las «nuevas» de Chacón y el Mellizo.", "items": [{"id": "malaguena-de-juan-breva", "n": "Malagueña de Juan Breva", "b": 1}, {"id": "malaguena-del-mellizo", "n": "Malagueña del Mellizo", "b": 1}, {"id": "malaguena-de-chacon", "n": "Malagueña de Chacón", "b": 1}, {"id": "malaguena-de-la-trini", "n": "Malagueña de la Trini"}, {"id": "malaguena-de-el-canario", "n": "Malagueña de El Canario"}, {"id": "malaguena-de-fosforito-el-viejo", "n": "Malagueña de Fosforito el Viejo"}, {"id": "malaguena-del-nino-de-tomares", "n": "Malagueña del Niño de Tomares"}, {"id": "malaguena-de-ojana", "n": "Malagueña de Ojana"}]}]}, {"id": "abandolaos", "n": "Verdiales y abandolaos", "compas": "ternario", "fams": [{"id": "aband", "n": "Fandangos abandolaos", "z": "Málaga · Córdoba", "r": "", "items": [{"id": "verdiales", "n": "Verdiales", "b": 1}, {"id": "rondena", "n": "Rondeña"}, {"id": "jabera", "n": "Jabera"}, {"id": "jabegote", "n": "Jabegote"}, {"id": "fandango-de-lucena", "n": "Fandango de Lucena"}, {"id": "zangano-de-puente-genil", "n": "Zángano de Puente Genil"}]}]}, {"id": "granainas", "n": "Granaína", "compas": "libre", "fams": [{"id": "gr", "n": "Granaína", "z": "Granada", "r": "", "items": [{"id": "granaina", "n": "Granaína", "b": 1}, {"id": "media-granaina", "n": "Media granaína", "b": 1}]}]}, {"id": "levante", "n": "Cantes de Levante", "compas": "libre", "fams": [{"id": "lev", "n": "Cantes mineros", "z": "La Unión · Cartagena · Almería · Jaén", "r": "Con la taranta como matriz; usan el quinto grado rebajado.", "items": [{"id": "taranta", "n": "Taranta", "b": 1}, {"id": "taranto", "n": "Taranto", "b": 1, "c": "tangos"}, {"id": "cartagenera", "n": "Cartagenera", "b": 1}, {"id": "minera", "n": "Minera", "b": 1}, {"id": "levantica", "n": "Levantica"}, {"id": "murciana", "n": "Murciana"}, {"id": "fandango-minero", "n": "Fandango minero"}]}]}, {"id": "otros-cantes", "n": "Petenera, saeta y otros", "compas": "libre", "fams": [{"id": "oc", "n": "Otros cantes", "z": "", "r": "", "items": [{"id": "petenera", "n": "Petenera", "b": 1}, {"id": "saeta", "n": "Saeta", "b": 1}, {"id": "nana", "n": "Nana"}, {"id": "bambera", "n": "Bambera"}, {"id": "sevillanas", "n": "Sevillanas", "c": "ternario"}, {"id": "campanilleros", "n": "Campanilleros"}, {"id": "trilleras", "n": "Trilleras"}]}]}]</script>
+<script>
+{
+const STRUCT=JSON.parse(document.getElementById('struct').textContent);
+const COMPAS={tangos:{n:4,acc:[1],u:1,lab:'Binario · 4 pulsos (tangos, tientos)'},solea:{n:12,acc:[3,6,8,10,12],u:1,lab:'12 pulsos (soleá, bulería, alegrías)'},seguiriya:{n:12,acc:[1,3,5,8,11],u:0.5,lab:'Seguiriya · 12 corcheas'},ternario:{n:3,acc:[1],u:1,lab:'Ternario · 3 pulsos (fandango, verdiales)'},libre:{n:0,acc:[],u:1,lab:'Libre / sin compás'}};
+const ST_LAB={pendiente:'Pendiente',borrador:'Borrador',lista:'Lista'};
+const ETAPA={I:'Inicio',T:'Transición','T/C':'Transición o cierre',C:'Cierre'};
+const TPL={tangos:'X:1\nT:\nM:4/4\nL:1/16\nQ:1/4=80\nK:Aphr\n',solea:'X:1\nT:\nM:3/4\nL:1/8\nQ:1/4=110\nK:Ephr\n',seguiriya:'X:1\nT:\nM:6/8\nL:1/8\nQ:3/8=60\nK:Aphr\n',ternario:'X:1\nT:\nM:3/4\nL:1/8\nQ:1/4=120\nK:Ephr\n',libre:'X:1\nT:\nM:none\nL:1/8\nQ:1/4=70\nK:Ephr\n'};
+const MIGRA={'otros/binarios/tientos':'tientos/tientos/tientos','otros/binarios/tientos-tangos':'tientos/tientos/tientos-tangos','otros/binarios/marianas':'otros-binarios/ob/marianas','otros/binarios/garrotin':'otros-binarios/ob/garrotin','otros/binarios/farruca':'otros-binarios/ob/farruca','otros/binarios/tanguillos':'otros-binarios/ob/tanguillos','otros/zambra/alborea':'tangos/zambra/alborea','otros/zambra/cachucha':'tangos/zambra/cachucha','otros/zambra/mosca':'tangos/zambra/mosca'};
+const DKEY='cante-admin-lab',PKEY='cante-admin-player',DATA='cante-datos.json';
+let S={v:1,savedAt:null,items:{},extra:{}},dirty=false,sel=null,palo='tangos',filtro='todos',q='',soloB=false,cmpKey='';
+const closed=new Set();
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm=s=>String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+
+function famsOf(p){return p.fams.map(f=>({...f,items:[...f.items,...((S.extra[p.id+'/'+f.id])||[])]}))}
+function all(){const out=[];for(const p of STRUCT)for(const f of famsOf(p))for(const it of f.items)out.push({key:p.id+'/'+f.id+'/'+it.id,p,f,it});return out}
+function find(key){return all().find(x=>x.key===key)}
+const E=key=>S.items[key]||{};
+function st(key){const e=E(key);if(e.estado)return e.estado;return e.abc&&e.abc.trim()?'borrador':'pendiente'}
+function setE(key,f,v){S.items[key]={...E(key),[f]:v};markDirty()}
+function compasOf(x){return E(x.key).compas||x.it.c||x.f.compas||x.p.compas}
+function isB(key){const e=E(key);if(e.b!==undefined)return !!e.b;const x=find(key);return !!(x&&x.it.b)}
+const PCOL=id=>id==='tangos'?'var(--tangos)':id==='solea'?'var(--solea)':'var(--pal)';
+
+function persist(at){try{localStorage.setItem(DKEY,JSON.stringify({at:at||new Date().toISOString(),dirty,state:S}))}catch(e){toast('Este navegador no deja guardar: descarga los datos para no perderlos.')}}
+function markDirty(){dirty=true;persist();paintSave()}
+function paintSave(){const b=$('#b-save');b.dataset.dirty=dirty?'1':'0';b.textContent=dirty?'Descargar datos para publicar':'Datos al día';b.title=dirty?'Tus cambios están guardados en este navegador. Descarga cante-datos.json y súbelo a lab para que salgan en la página pública.':'La página pública ya tiene estos datos (si subiste el último archivo).'}
+let tt=0;function toast(m){const t=$('#toast');t.textContent=m;t.dataset.on='1';clearTimeout(tt);tt=setTimeout(()=>t.dataset.on='0',3800)}
+
+function counts(list){const c={pendiente:0,borrador:0,lista:0};for(const x of list)c[st(x.key)]++;return c}
+function barHTML(c,n,color){const w=k=>n?(c[k]/n*100):0;return `<span class="bar" aria-hidden="true"><i style="width:${w('lista')}%;background:${color}"></i><i style="width:${w('borrador')}%;background:var(--amber)"></i></span>`}
+
+function renderTop(){const a=all(),c=counts(a);$('#prog').innerHTML=`${barHTML(c,a.length,'var(--ink)')}<span><b>${c.lista}</b> listas · ${c.borrador} en borrador · ${c.pendiente} pendientes</span>`}
+function renderTabs(){const a=all();$('#psel').innerHTML=STRUCT.map(p=>{const l=a.filter(x=>x.p.id===p.id),c=counts(l);return `<option value="${p.id}" ${p.id===palo?'selected':''}>${esc(p.n)} · ${c.lista+c.borrador}/${l.length}</option>`}).join('');document.documentElement.style.setProperty('--ac',PCOL(palo))}
+function renderTree(){
+ const p=STRUCT.find(p=>p.id===palo),qq=norm(q);
+ $('#tree').innerHTML=famsOf(p).map(f=>{
+  const fk=p.id+'/'+f.id;const list=f.items.map(it=>({key:fk+'/'+it.id,it,p,f}));const c=counts(list);
+  const vis=list.filter(x=>(filtro==='todos'||st(x.key)===filtro)&&(!soloB||isB(x.key))&&(!qq||norm(x.it.n+' '+(x.it.d||'')).includes(qq)));
+  if(!vis.length&&(filtro!=='todos'||qq||soloB))return '';
+  const open=!closed.has(fk)||qq||filtro!=='todos'||soloB;
+  return `<div class="fam" data-open="${open?1:0}"><button class="famh" type="button" data-fam="${fk}" aria-expanded="${open}"><span class="tw">▾</span><b>${esc(f.n)}</b><span>${c.lista+c.borrador}/${list.length}</span></button>
+<ul class="items">${vis.map(x=>`<li><button class="it" type="button" data-k="${x.key}" aria-current="${sel===x.key}"><span class="dot ${st(x.key)}" title="${ST_LAB[st(x.key)]}"></span><span>${esc(x.it.n)}</span>${isB(x.key)?'<span class="bas" title="Básico" aria-label="básico">★</span>':''}${x.it.e?`<em>${esc(x.it.e)}</em>`:''}</button></li>`).join('')}
+<li><button class="add" type="button" data-addto="${fk}">+ Añadir estilo o variante</button></li></ul></div>`}).join('')||'<p class="desc">Nada coincide con el filtro.</p>';
+}
+function renderAll(){renderTop();renderTabs();renderTree();sel?renderEditor():renderOverview()}
+
+function renderOverview(){
+ const a=all(),bas=a.filter(x=>isB(x.key)),cb=counts(bas);
+ const pend=a.filter(x=>x.p.id===palo&&st(x.key)==='pendiente').sort((m,n)=>isB(n.key)-isB(m.key)).slice(0,8);
+ const bpend=bas.filter(x=>st(x.key)!=='lista').slice(0,12);
+ $('#main').innerHTML=`<div class="ov"><h2>Lo que falta por meter</h2><p class="desc">Elige un estilo en el índice para escribir su melodía, oírla y marcarla como lista. Cada punto es una melodía: ○ pendiente, ◐ borrador, ● lista.</p></div>
+<div class="card"><h3>★ Los básicos: ${cb.lista} de ${bas.length} listos</h3><p class="desc" style="font-size:13px;margin:0 0 8px">Una tanda mínima por palo para empezar; el resto del mapa espera.</p>${barHTML(cb,bas.length,'var(--ink)')}<ul class="next" style="margin-top:10px">${bpend.map(x=>`<li><button type="button" data-k="${x.key}">${esc(x.p.n)} · <b>${esc(x.it.n)}</b> <span class="desc">(${ST_LAB[st(x.key)].toLowerCase()})</span></button></li>`).join('')||'<li class="desc">Todos los básicos están listos.</li>'}</ul></div>
+<div class="cards">${STRUCT.map(p=>{const l=a.filter(x=>x.p.id===p.id),c=counts(l);return `<div class="card"><h3>${esc(p.n)}</h3><div class="big">${c.lista}<span style="font-size:16px;color:var(--muted);font-weight:600"> / ${l.length} listas</span></div><p class="desc" style="font-size:13px;margin:6px 0">${c.borrador} en borrador · ${c.pendiente} pendientes</p>${barHTML(c,l.length,PCOL(p.id))}</div>`}).join('')}</div>
+<div class="card"><h3>Siguientes pendientes en ${esc(STRUCT.find(p=>p.id===palo).n)}</h3><ul class="next">${pend.map(x=>`<li><button type="button" data-k="${x.key}">${esc(x.f.n)} · <b>${esc(x.it.n)}</b></button></li>`).join('')||'<li class="desc">No queda ninguno pendiente.</li>'}</ul></div>`;
+}
+
+function renderEditor(){
+ const x=find(sel);if(!x){sel=null;return renderOverview()}
+ const e=E(x.key),cp=compasOf(x),prefs=loadPrefs();
+ $('#main').innerHTML=`<div><div class="crumb">${esc(x.p.n)} · ${esc(x.f.n)}${x.f.z?' · '+esc(x.f.z):''}</div>
+<div class="etit"><h2>${esc(x.it.n)}</h2>${x.it.e?`<span class="tag">${esc(ETAPA[x.it.e]||x.it.e)}</span>`:''}<span class="tag" id="sttag">${ST_LAB[st(x.key)]}</span></div>
+${x.it.d?`<p class="desc">${esc(x.it.d)}</p>`:''}${x.f.r?`<p class="desc" style="font-size:13px">Familia: ${esc(x.f.r)}</p>`:''}</div>
+<div class="grid">
+<label class="f">Estado<select data-f="estado">${['pendiente','borrador','lista'].map(s=>`<option value="${s}" ${st(x.key)===s?'selected':''}>${ST_LAB[s]}</option>`).join('')}</select></label>
+<label class="f">Tono / cejilla<input data-f="tono" value="${esc(e.tono)}" placeholder="p. ej. por medio, cejilla 2"></label>
+<label class="f">Compás<select data-f="compas">${Object.entries(COMPAS).map(([k,v])=>`<option value="${k}" ${cp===k?'selected':''}>${v.lab}</option>`).join('')}</select></label>
+<label class="f">La melodía entra en el pulso<input data-f="inicio" type="number" min="1" max="12" value="${esc(e.inicio||1)}"></label>
+<label class="f">Grabación de referencia<input data-f="ref" type="url" value="${esc(e.ref)}" placeholder="https://…"></label>
+<label class="tg" style="align-self:end"><input type="checkbox" id="o-bas" ${isB(x.key)?'checked':''}> ★ Estilo básico</label>
+</div>
+<label class="f">Letra de ejemplo<textarea data-f="letra" rows="3" placeholder="Una copla tradicional de este estilo">${esc(e.letra)}</textarea></label>
+<div class="cols"><label class="f">Melodía en notación ABC<textarea class="abc" data-f="abc" spellcheck="false" placeholder="Pulsa «Plantilla» para empezar">${esc(e.abc)}</textarea></label>
+<div style="display:flex;flex-direction:column;gap:8px"><div class="row" style="justify-content:flex-start"><button class="btn" type="button" id="b-tpl">Plantilla ABC</button></div>
+<details class="help"><summary>Cómo escribir la melodía</summary><p>Cabecera: <code>M:</code> compás, <code>L:</code> figura base, <code>Q:1/4=80</code> tempo, <code>K:Ephr</code> tono (frigio de Mi = por arriba; <code>Aphr</code> = por medio).</p><p>Notas: <code>C D E F G A B</code> octava central, <code>c d e</code> aguda, <code>B,</code> grave. Duración en múltiplos de L: con <code>L:1/16</code>, <code>E4</code> es una negra y <code>E2</code> una corchea. <code>^F</code> sostenido, <code>_B</code> bemol, <code>=G</code> becuadro, <code>z</code> silencio, <code>-</code> ligadura, <code>|</code> barra, <code>"Am"</code> acorde encima. Para la letra bajo las notas, añade una línea <code>w: ay de mi ...</code>.</p><p>El compás de palmas cuenta en negras: en soleá, cuatro compases de 3/4 hacen un ciclo de 12.</p></details></div></div>
+<div class="sheet" id="paper"></div><div class="warn" id="warn"></div>
+<div class="player" aria-label="Reproductor">
+<button class="play" type="button" id="b-play">▶ Escuchar</button>
+<label class="tg"><input type="checkbox" id="o-mel" ${prefs.mel?'checked':''}> Melodía</label>
+<label class="tg"><input type="checkbox" id="o-comp" ${prefs.comp?'checked':''} ${cp==='libre'?'disabled':''}> Compás</label>
+<label class="tg"><input type="checkbox" id="o-ent" ${prefs.ent?'checked':''}> Ciclo de entrada</label>
+<label class="tg"><input type="checkbox" id="o-loop" ${prefs.loop?'checked':''}> Repetir</label>
+<label class="sm">Velocidad <input type="range" id="o-vel" min="40" max="130" step="5" value="${prefs.vel}"><output id="o-velv">${prefs.vel}%</output></label>
+<label class="sm">Sonido <select id="o-inst">${[['voz','Voz'],['flauta','Flauta'],['trompeta','Trompeta']].map(([k,v])=>`<option value="${k}" ${prefs.inst===k?'selected':''}>${v}</option>`).join('')}</select></label>
+<label class="sm">Subir/bajar <select id="o-semi">${Array.from({length:13},(_,i)=>i-6).map(n=>`<option value="${n}" ${prefs.semi===n?'selected':''}>${n>0?'+':''}${n} st</option>`).join('')}</select></label>
+<label class="sm">Partitura para <select id="o-lect">${[[0,'Sonido real'],[2,'Instrumento en Si♭ (trompeta)'],[9,'Instrumento en Mi♭ (saxo alto)']].map(([k,v])=>`<option value="${k}" ${prefs.lect===k?'selected':''}>${v}</option>`).join('')}</select></label>
+<div class="ph"><i id="phi"></i></div>
+</div>
+<div class="cols"><label class="f">Recorrido melódico en grados<textarea data-f="recorrido" rows="4" placeholder="p. ej. 1.er tercio: b3–2–1; tercio alto 5–b6–b7…">${esc(e.recorrido)}</textarea></label>
+<label class="f">Notas y variantes<textarea data-f="notas" rows="4">${esc(e.notas)}</textarea></label></div>
+<section class="cmp"><label class="f" style="max-width:520px">Comparar con otro estilo de ${esc(x.p.n)}<select id="o-cmp"><option value="">Elige uno con melodía…</option>${all().filter(y=>y.p.id===x.p.id&&y.key!==x.key&&(E(y.key).abc||'').trim()).map(y=>`<option value="${y.key}" ${cmpKey===y.key?'selected':''}>${esc(y.f.n)} · ${esc(y.it.n)}</option>`).join('')}</select></label>
+<div id="cmpbox"></div></section>`;
+ drawSheet();drawCmp();
+}
+
+function loadPrefs(){let p={};try{p=JSON.parse(localStorage.getItem(PKEY)||'{}')}catch(e){}return {mel:p.mel??true,comp:p.comp??true,ent:p.ent??false,loop:p.loop??false,vel:p.vel??100,inst:p.inst??'flauta',semi:p.semi??0,lect:p.lect??0}}
+function savePrefs(){const g=id=>$(id);const p={mel:g('#o-mel').checked,comp:g('#o-comp').checked,ent:g('#o-ent').checked,loop:g('#o-loop').checked,vel:+g('#o-vel').value,inst:g('#o-inst').value,semi:+g('#o-semi').value,lect:+g('#o-lect').value};try{localStorage.setItem(PKEY,JSON.stringify(p))}catch(e){}return p}
+
+function drawCmp(){const box=$('#cmpbox');if(!box)return;const y=cmpKey&&find(cmpKey);if(!y||!(E(y.key).abc||'').trim()){box.innerHTML=all().some(z=>z.p.id===find(sel).p.id&&z.key!==sel&&(E(z.key).abc||'').trim())?'':'<p class="desc">Cuando tengas otra melodía de este palo podrás ponerlas una sobre otra para oír y ver en qué se diferencian.</p>';return}
+ const e=E(y.key);box.innerHTML=`<div class="crumb">${esc(y.f.n)}</div><div class="etit"><h2 style="font-size:22px">${esc(y.it.n)}</h2><button class="play" type="button" id="b-play2">▶ Escuchar este</button><button class="btn" type="button" id="b-ab">Uno y luego otro</button></div>${e.recorrido?`<p class="desc">Recorrido: ${esc(e.recorrido)}</p>`:''}<div class="sheet" id="paper2"></div>`;drawSheet('paper2',y.key)}
+function drawSheet(pid='paper',key=sel){
+ const el=document.getElementById(pid),w=pid==='paper'?$('#warn'):{set textContent(v){}};if(!el)return;const abc=(E(key).abc||'').trim();w.textContent='';
+ if(!abc){el.innerHTML='<div class="empty">Aún no hay melodía. Escríbela en ABC o pulsa «Plantilla».</div>';return}
+ if(!window.ABCJS){el.innerHTML='<div class="empty">No se ha podido cargar el dibujo de partituras; el reproductor sí funciona.</div>';return}
+ const p=loadPrefs();
+ try{const t=ABCJS.renderAbc(pid,abc,{responsive:'resize',add_classes:true,visualTranspose:p.semi+p.lect,paddingtop:4,paddingbottom:4});if(t[0]&&t[0].warnings&&t[0].warnings.length)w.textContent='Avisos de la notación: '+t[0].warnings.map(s=>String(s).replace(/<[^>]*>/g,'')).slice(0,2).join(' · ')}catch(err){el.innerHTML='<div class="empty">La notación tiene un error y no se puede dibujar.</div>'}
+}
+
+/* ---- ABC → notas para el reproductor ---- */
+const MAJ={C:0,G:1,D:2,A:3,E:4,B:5,'F#':6,'C#':7,F:-1,Bb:-2,Eb:-3,Ab:-4,Db:-5,Gb:-6,Cb:-7};
+const MODE={'':0,maj:0,ion:0,mix:-1,dor:-2,m:-3,min:-3,aeo:-3,phr:-4,loc:-5,lyd:1};
+function keySig(k){const m=/^\s*([A-G])([#b]?)\s*([A-Za-z]*)/.exec(k||'');const acc={};if(!m)return acc;let n=MAJ[m[1]+m[2]];if(n===undefined)return acc;const md=m[3].toLowerCase();n+=MODE[md.startsWith('m')&&md.length<=3&&md!=='mix'?(md==='maj'?'maj':'m'):md.slice(0,3)]??0;
+ if(n>0)'FCGDAEB'.slice(0,Math.min(n,7)).split('').forEach(l=>acc[l]=1);if(n<0)'BEADGCF'.slice(0,Math.min(-n,7)).split('').forEach(l=>acc[l]=-1);return acc}
+function frac(s,def){const m=/(\d+)\s*\/\s*(\d+)/.exec(s||'');return m?(+m[1])/(+m[2]):def}
+function parseABC(src){
+ const lines=src.split(/\r?\n/);let L=null,M='4/4',key={},qbpm=90,body=[];
+ for(const ln of lines){const h=/^([A-Za-z]):\s*(.*)$/.exec(ln);if(h&&!/^[|]/.test(ln)){const [,f,v]=h;if(f==='L')L=frac(v,1/8);else if(f==='M')M=v.trim();else if(f==='K'){key=keySig(v);if(body.length)body.push('');}else if(f==='Q'){const m=/(\d+)\s*\/\s*(\d+)\s*=\s*(\d+)/.exec(v);if(m)qbpm=(+m[3])*((+m[1])/(+m[2]))/0.25;else if(/^\s*\d+/.test(v))qbpm=parseInt(v)}continue}
+  if(/^\s*%/.test(ln))continue;body.push(ln.replace(/%.*$/,''))}
+ if(L===null){const mf=frac(M,1);L=(M!=='none'&&mf<0.75)?1/16:1/8}
+ const unit=L*4,notes=[];let t=0,bar={},tie=null,tup=0,tupF=1,broken=0,last=null;
+ const s=body.join(' ');let i=0;
+ const re=/^(\^\^|\^|__|_|=)?([A-Ga-g])([,']*)(\d*)(\/*)(\d*)/,rr=/^[zx](\d*)(\/*)(\d*)/;
+ const dur=(a,sl,b)=>{let n=a?+a:1,d=1;if(sl){d=b?+b:Math.pow(2,sl.length);}return n/d};
+ while(i<s.length){const c=s[i],rest=s.slice(i);
+  if(c==='"'){const j=s.indexOf('"',i+1);i=j<0?s.length:j+1;continue}
+  if(c==='!'){const j=s.indexOf('!',i+1);i=j<0?s.length:j+1;continue}
+  if(c==='{'){const j=s.indexOf('}',i+1);i=j<0?s.length:j+1;continue}
+  if(c==='['&&/^\[[A-Za-z]:/.test(rest)){const j=s.indexOf(']',i);const fld=s.slice(i+1,j<0?s.length:j);if(fld[0]==='K')key=keySig(fld.slice(2));if(fld[0]==='L')L=frac(fld.slice(2),L);i=j<0?s.length:j+1;continue}
+  if(c==='|'||c===':'||c===']'||c==='['){bar={};i++;continue}
+  if(c==='('&&/^\(\d/.test(rest)){const n=+s[i+1];tup=n;tupF=n===3?2/3:n===2?3/2:(n-1)/n;i+=2;continue}
+  if(c==='>'||c==='<'){if(last){const f=c==='>'?1.5:0.5;t-=last.d;last.d*=f;t+=last.d;broken=c==='>'?0.5:1.5}i++;continue}
+  if(c==='-'){if(last)tie=last;i++;continue}
+  let m=rr.exec(rest);
+  if(m){let d=dur(m[1],m[2],m[3])*unit;if(tup){d*=tupF;tup--}if(broken){d*=broken;broken=0}t+=d;last=null;tie=null;i+=m[0].length;continue}
+  m=re.exec(rest);
+  if(m){const [all_,ac,l,oc,a,sl,b]=m;const up=l.toUpperCase();let midi={C:60,D:62,E:64,F:65,G:67,A:69,B:71}[up]+(l===up?0:12);for(const o of oc)midi+=o===','?-12:12;const bk=up+midi;
+   let alt;if(ac){alt={'^^':2,'^':1,'__':-2,'_':-1,'=':0}[ac];bar[bk]=alt}else alt=bar[bk]??key[up]??0;midi+=alt;
+   let d=dur(a,sl,b)*unit;if(tup){d*=tupF;tup--}if(broken){d*=broken;broken=0}
+   if(tie&&tie.m===midi){tie.d+=d;last=tie}else{last={t,d,m:midi};notes.push(last)}tie=null;t+=d;i+=all_.length;continue}
+  i++}
+ return {notes,len:t,qbpm}
+}
+
+/* ---- Audio ---- */
+let ctx=null,raf=0,loopT=0,startAt=0,total=0;
+function noiseBuf(c){const b=c.createBuffer(1,c.sampleRate*0.25,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;return b}
+function palma(c,dest,at,strong,buf){const s=c.createBufferSource();s.buffer=buf;const f=c.createBiquadFilter();f.type='bandpass';f.frequency.value=strong?1300:1800;f.Q.value=1.1;const g=c.createGain();const v=strong?0.9:0.32;g.gain.setValueAtTime(0,at);g.gain.linearRampToValueAtTime(v,at+0.002);g.gain.exponentialRampToValueAtTime(0.001,at+(strong?0.14:0.08));s.connect(f).connect(g).connect(dest);s.start(at);s.stop(at+0.2);
+ if(strong){const o=c.createOscillator(),og=c.createGain();o.frequency.setValueAtTime(150,at);o.frequency.exponentialRampToValueAtTime(60,at+0.12);og.gain.setValueAtTime(0.5,at);og.gain.exponentialRampToValueAtTime(0.001,at+0.15);o.connect(og).connect(dest);o.start(at);o.stop(at+0.16)}}
+function tone(c,dest,at,dur,midi,inst){const f=440*Math.pow(2,(midi-69)/12);const g=c.createGain(),lp=c.createBiquadFilter();lp.type='lowpass';
+ const o=c.createOscillator();const cfg={voz:['sawtooth',1700,0.05,0.16],flauta:['triangle',3000,0.06,0.22],trompeta:['sawtooth',2600,0.03,0.2]}[inst]||['triangle',3000,0.05,0.2];
+ o.type=cfg[0];lp.frequency.value=cfg[1];o.frequency.setValueAtTime(f,at);
+ const lfo=c.createOscillator(),lg=c.createGain();lfo.frequency.value=5.4;lg.gain.setValueAtTime(0,at);lg.gain.linearRampToValueAtTime(f*(inst==='trompeta'?0.004:0.009),at+Math.min(0.35,dur*0.6));lfo.connect(lg).connect(o.frequency);
+ const end=at+Math.max(dur,0.06),v=cfg[3];g.gain.setValueAtTime(0,at);g.gain.linearRampToValueAtTime(v,at+cfg[2]);g.gain.setValueAtTime(v,Math.max(at+cfg[2],end-0.06));g.gain.linearRampToValueAtTime(0,end);
+ o.connect(lp).connect(g).connect(dest);o.start(at);lfo.start(at);o.stop(end+0.02);lfo.stop(end+0.02)}
+let queue=[];
+function stop(full=true){cancelAnimationFrame(raf);clearTimeout(loopT);if(ctx){ctx.close().catch(()=>{});ctx=null}if(full)queue=[];const b=$('#b-play');if(b)b.textContent='▶ Escuchar';const b2=$('#b-play2');if(b2)b2.textContent='▶ Escuchar este';const ph=$('#phi');if(ph)ph.style.width='0'}
+function play(key=sel,btn='#b-play'){
+ const x=find(key);if(!x)return;const p=savePrefs();const cp=COMPAS[compasOf(x)]||COMPAS.libre;const tune=parseABC(E(x.key).abc||'');
+ const useMel=p.mel&&tune.notes.length>0,useComp=p.comp&&cp.n>0;
+ if(!useMel&&!useComp){toast(tune.notes.length?'Activa la melodía o el compás.':'No hay melodía todavía: activa el compás para practicar el ritmo.');return}
+ const bpm=tune.qbpm*p.vel/100,spq=60/bpm,u=cp.u||1;
+ const lead=(p.ent&&useComp)?cp.n:0;const melLen=useMel?tune.len/u:cp.n*4;const pulses=lead+Math.ceil(melLen-1e-6);
+ try{ctx=new (window.AudioContext||window.webkitAudioContext)()}catch(e){toast('Este navegador no permite reproducir audio aquí.');return}
+ const master=ctx.createGain();master.gain.value=0.8;master.connect(ctx.destination);const buf=noiseBuf(ctx);
+ startAt=ctx.currentTime+0.12;total=pulses*u*spq;
+ if(useComp){const ini=Math.max(1,+(E(x.key).inicio||1));for(let k=0;k<pulses;k++){const pos=((((k-lead)+(ini-1))%cp.n)+cp.n)%cp.n+1;palma(ctx,master,startAt+k*u*spq,cp.acc.includes(pos),buf)}}
+ if(useMel)for(const n of tune.notes)tone(ctx,master,startAt+(lead*u+n.t)*spq,n.d*spq*0.97,n.m+p.semi,p.inst);
+ const bt=$(btn);if(bt)bt.textContent='■ Parar';
+ const tick=()=>{if(!ctx)return;const el=ctx.currentTime-startAt,ph=$('#phi');if(ph)ph.style.width=Math.min(100,Math.max(0,el/total*100))+'%';if(el<total)raf=requestAnimationFrame(tick)};tick();
+ loopT=setTimeout(()=>{const lp=$('#o-loop')?.checked;stop(false);if(queue.length){const [k2,b2]=queue.shift();play(k2,b2)}else if(lp&&(sel===x.key||cmpKey===x.key))play(key,btn)},(total+0.25)*1000);
+}
+
+/* ---- Guardar, exportar, importar ---- */
+function save(){
+ S.savedAt=new Date().toISOString();const json=JSON.stringify(S,null,1);
+ try{const url=URL.createObjectURL(new Blob([json],{type:'application/json'}));const el=document.createElement('a');el.href=url;el.download=DATA;document.body.appendChild(el);el.click();setTimeout(()=>{URL.revokeObjectURL(url);el.remove()},800)}catch(e){toast('No se pudo descargar el archivo.');return}
+ dirty=false;persist(S.savedAt);paintSave();toast('Descargado cante-datos.json: súbelo a lab (sustituyendo el anterior) y la página pública se actualiza.')
+}
+function openModal(html){$('#mbox').innerHTML=html;$('#modal').dataset.open='1';const f=$('#mbox').querySelector('input,textarea,button');if(f)f.focus()}
+function closeModal(){$('#modal').dataset.open='0'}
+function importar(){openModal(`<h3 id="m-t">Importar datos</h3><p class="desc">Elige un archivo .json exportado antes o pega su contenido. Sustituirá los datos actuales de esta página.</p><input type="file" accept=".json,application/json" id="m-file"><textarea id="m-json" placeholder="Pega aquí el JSON"></textarea><div class="row"><button class="btn" type="button" data-close>Cancelar</button><button class="btn pri" type="button" id="m-load">Importar</button></div>`)}
+function addTo(fk){openModal(`<h3 id="m-t">Añadir estilo o variante</h3><label class="f">Nombre<input id="m-name" placeholder="p. ej. Joaquín el de la Paula 5"></label><div class="row"><button class="btn" type="button" data-close>Cancelar</button><button class="btn pri" type="button" id="m-add" data-fk="${fk}">Añadir</button></div>`)}
+
+/* ---- Eventos ---- */
+let drawT=0;
+document.addEventListener('click',async ev=>{
+ const t=ev.target.closest('button');if(!t)return;
+ if(t.id==='b-bas'){soloB=!soloB;t.setAttribute('aria-pressed',soloB);renderTree();return}
+ if(t.dataset.fi){filtro=t.dataset.fi;document.querySelectorAll('[data-fi]').forEach(b=>b.setAttribute('aria-pressed',b===t));renderTree();return}
+ if(t.dataset.fam){closed.has(t.dataset.fam)?closed.delete(t.dataset.fam):closed.add(t.dataset.fam);renderTree();return}
+ if(t.dataset.k){stop();cmpKey='';sel=t.dataset.k;const x=find(sel);if(x&&x.p.id!==palo){palo=x.p.id}renderAll();if(innerWidth<820)$('#main').scrollIntoView({behavior:'smooth'});return}
+ if(t.dataset.addto){addTo(t.dataset.addto);return}
+ if(t.hasAttribute('data-close')){closeModal();return}
+ if(t.id==='b-play'){ctx?stop():play();return}
+ if(t.id==='b-play2'){ctx?stop():play(cmpKey,'#b-play2');return}
+ if(t.id==='b-ab'){stop();queue=[[cmpKey,'#b-play2']];play(sel,'#b-play');return}
+ if(t.id==='b-tpl'){const x=find(sel);const ta=document.querySelector('[data-f=abc]');const cur=ta.value.trim();if(cur&&!cur.startsWith('X:')){ta.value=TPL[compasOf(x)]+cur}else if(!cur){ta.value=TPL[compasOf(x)].replace('T:\n','T:'+x.it.n+'\n')}else{toast('Ya hay una cabecera ABC.');return}setE(sel,'abc',ta.value);drawSheet();refreshStatus();ta.focus();return}
+ if(t.id==='b-save'){save();return}
+ if(t.id==='b-imp'){importar();return}
+ if(t.id==='m-copy'){try{await navigator.clipboard.writeText($('#m-json').value);toast('Copiado.')}catch(e){$('#m-json').select();toast('Selecciona el texto y cópialo a mano.')}return}
+ if(t.id==='m-load'){try{const d=JSON.parse($('#m-json').value);if(!d||typeof d.items!=='object')throw 0;S={v:1,savedAt:d.savedAt||null,items:d.items,extra:d.extra||{}};closeModal();sel=null;markDirty();renderAll();toast('Importado y guardado en este navegador.')}catch(e){toast('Ese texto no es un archivo de datos válido.')}return}
+ if(t.id==='m-add'){const n=$('#m-name').value.trim();if(!n){toast('Escribe un nombre.');return}const fk=t.dataset.fk;(S.extra[fk]=S.extra[fk]||[]).push({id:'x-'+Date.now().toString(36),n});closeModal();markDirty();renderAll();return}
+});
+$('#modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+document.addEventListener('change',async e=>{
+ const t=e.target;
+ if(t.id==='m-file'&&t.files[0]){$('#m-json').value=await t.files[0].text();return}
+ if(t.id==='psel'){palo=t.value;sel=null;stop();renderAll();return}
+ if(t.id==='o-bas'){setE(sel,'b',t.checked);refreshStatus();return}
+ if(t.id==='o-cmp'){stop();cmpKey=t.value;drawCmp();return}
+ if(t.dataset.f){setE(sel,t.dataset.f,t.dataset.f==='inicio'?Math.min(12,Math.max(1,+t.value||1)):t.value);if(t.dataset.f==='compas'){stop();renderEditor()}refreshStatus();return}
+ if(t.id&&t.id.startsWith('o-')){savePrefs();if(t.id==='o-semi'||t.id==='o-lect'){drawSheet();drawCmp()}}
+});
+document.addEventListener('input',e=>{
+ const t=e.target;
+ if(t.id==='q'){q=t.value;renderTree();return}
+ if(t.id==='o-vel'){$('#o-velv').textContent=t.value+'%';return}
+ if(t.dataset.f&&t.tagName!=='SELECT'){S.items[sel]={...E(sel),[t.dataset.f]:t.value};markDirty();if(t.dataset.f==='abc'){clearTimeout(drawT);drawT=setTimeout(()=>{drawSheet();refreshStatus()},350)}}
+});
+function refreshStatus(){const tag=$('#sttag');if(tag)tag.textContent=ST_LAB[st(sel)];const sl=document.querySelector('[data-f=estado]');if(sl)sl.value=st(sel);renderTop();renderTabs();renderTree()}
+
+async function load(){
+ try{const r=await fetch(DATA,{cache:'no-store'});if(r.ok){const d=await r.json();if(d&&d.items)S={v:1,savedAt:d.savedAt||null,items:d.items,extra:d.extra||{}}}}catch(e){}
+ try{const d=JSON.parse(localStorage.getItem(DKEY)||'null');if(d&&d.state&&(!S.savedAt||d.at>S.savedAt)){S=d.state;dirty=!!d.dirty||!S.savedAt||d.at>S.savedAt}}catch(e){}
+ for(const [o,n] of Object.entries(MIGRA))if(S.items[o]&&!S.items[n]){S.items[n]=S.items[o];delete S.items[o]}
+ paintSave();renderAll();
+}
+load();
+}
+</script>
+</body>
+</html>
